@@ -1,8 +1,93 @@
-@book{HoTT13,
-  shorthand = {UF13},
-  author = {The {Univalent Foundations Program, Institute for Advanced Study}},
-  title = {Homotopy Type Theory: Univalent Foundations of Mathematics},
-  url = {https://homotopytypetheory.org/book/},
-  publisher = {Self-published},
-  year = 2013,
+@article{Abramsky1933,
+  title = {Computational interpretations of linear logic},
+  journal = {Theoretical Computer Science},
+  volume = {111},
+  number = {1},
+  pages = {3-57},
+  year = {1993},
+  issn = {0304-3975},
+  doi = {https://doi.org/10.1016/0304-3975(93)90181-R},
+  url = {https://www.sciencedirect.com/science/article/pii/030439759390181R},
+  author = {Samson Abramsky},
+  abstract = {We study Girard's linear logic from the point of view of giving a concrete computational interpretation of the logic, based on the Curry—Howard isomorphism. In the case of Intuitionistic linear logic, this leads to a refinement of the lambda calculus, giving finer control over order of evaluation and storage allocation, while maintaining the logical content of programs as proofs, and computation as cut-elimination. In the classical case, it leads to a concurrent process paradigm with an operational semantics in the style of Berry and Boudol's chemical abstract machine. This opens up a promising new approach to the parallel implementation of functional programming languages; and offers the prospect of typed concurrent programming in which correctness is guaranteed by the typing.}
+}
+
+@article{Caires2014,
+  author = {Caires, Luís and Pfenning, Frank and Toninho, Bernardo},
+  year = {2014},
+  month = {11},
+  pages = {},
+  title = {Linear Logic Propositions as Session Types},
+  volume = {760},
+  journal = {Mathematical Structures in Computer Science},
+  doi = {10.1017/S0960129514000218}
+}
+
+@incollection{Howard1980,
+	author = {William Alvin Howard},
+	booktitle = {To H. B. Curry: Essays on Combinatory Logic, Lambda Calculus, and Formalism},
+	editor = {Haskell Curry and Hindley B. and Seldin J. Roger and P. Jonathan},
+	publisher = {Academic Press},
+	title = {The Formulae-as-Types Notion of Construction},
+	year = {1980}
+}
+
+@InProceedings{Mos2014,
+  author="Mostrous, Dimitris
+  and Vasconcelos, Vasco Thudichum",
+  editor="K{\"u}hn, Eva
+  and Pugliese, Rosario",
+  title="Affine Sessions",
+  booktitle="Coordination Models and Languages",
+  year="2014",
+  publisher="Springer Berlin Heidelberg",
+  address="Berlin, Heidelberg",
+  pages="115--130",
+  abstract="Session types describe the structure of protocols from the point of view of each participating channel. In particular, the types describe the type of communicated values, and also the dynamic alternation of input and output actions on the same channel, by which a protocol can be statically verified. Crucial to any term language with session types is the notion of linearity, which guarantees that channels exhibit exactly the behaviour prescribed by their type. We relax the condition of linearity to that of affinity, by which channels exhibit at most the behaviour prescribed by their types. This more liberal setting allows us to incorporate an elegant error handling mechanism which simplifies and improves related works on exceptions. Moreover, our treatment does not affect the progress properties of the language: sessions never get stuck.",
+  isbn="978-3-662-43376-8"
+}
+
+@book{Milner1997,
+    author = {Milner, Robin and Harper, Robert and MacQueen, David and Tofte, Mads},
+    title = "{The Definition of Standard ML}",
+    publisher = {The MIT Press},
+    year = {1997},
+    month = {05},
+    abstract = "{Standard ML is a general-purpose programming language designed for large projects. This book provides a formal definition of Standard ML for the benefit of all concerned with the language, including users and implementers. Because computer programs are increasingly required to withstand rigorous analysis, it is all the more important that the language in which they are written be defined with full rigor. One purpose of a language definition is to establish a theory of meanings upon which the understanding of particular programs may rest. To properly define a programming language, it is necessary to use some form of notation other than a programming language. Given a concern for rigor, mathematical notation is an obvious choice. The authors have defined their semantic objects in mathematical notation that is completely independent of Standard ML. In defining a language one must also define the rules of evaluation precisely—that is, define what meaning results from evaluating any phrase of the language. The definition thus constitutes a formal specification for an implementation. The authors have developed enough of their theory to give sense to their rules of evaluation. The Definition of Standard ML is the essential point of reference for Standard ML. Since its publication in 1990, the implementation technology of the language has advanced enormously and the number of users has grown. The revised edition includes a number of new features, omits little-used features, and corrects mistakes of definition.}",
+    isbn = {9780262287005},
+    doi = {10.7551/mitpress/2319.001.0001},
+    url = {https://doi.org/10.7551/mitpress/2319.001.0001},
+}
+
+@article{Wadler2012,
+author = {Wadler, Philip},
+title = {Propositions as sessions},
+year = {2012},
+issue_date = {September 2012},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {47},
+number = {9},
+issn = {0362-1340},
+url = {https://doi.org/10.1145/2398856.2364568},
+doi = {10.1145/2398856.2364568},
+abstract = {Continuing a line of work by Abramsky (1994), by Bellin and Scott (1994), and by Caires and Pfenning (2010), among others, this paper presents CP, a calculus in which propositions of classical linear logic correspond to session types. Continuing a line of work by Honda (1993), by Honda, Kubo, and Vasconcelos (1998), and by Gay and Vasconcelos (2010), among others, this paper presents GV, a linear functional language with session types, and presents a translation from GV into CP. The translation formalises for the first time a connection between a standard presentation of session types and linear logic, and shows how a modification to the standard presentation yield a language free from deadlock, where deadlock freedom follows from the correspondence to linear logic.},
+journal = {SIGPLAN Not.},
+month = {sep},
+pages = {273–286},
+numpages = {14},
+keywords = {lambda calculus, linear logic, pi calculus}
+}
+
+@InProceedings{Friedman1978,
+author="Friedman, Harvey",
+editor="M{\"u}ller, Gert H.
+and Scott, Dana S.",
+title="Classically and intuitionistically provably recursive functions",
+booktitle="Higher Set Theory",
+year="1978",
+publisher="Springer Berlin Heidelberg",
+address="Berlin, Heidelberg",
+pages="21--27",
+isbn="978-3-540-35749-0"
 }

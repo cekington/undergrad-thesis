@@ -2,6 +2,7 @@
 
 \usepackage{latexsym,amsmath,amsfonts,amssymb,amsthm}
 \usepackage{url}
+\usepackage{proof}
 \usepackage[style=alphabetic,natbib=true,backend=bibtex,maxbibnames=99]{biblatex}
 \usepackage[colorlinks=true]{hyperref}
 \usepackage[nameinlink,capitalize,noabbrev]{cleveref}
@@ -29,14 +30,12 @@
 
 \setsecnumdepth{subsection}
 
-\newcommand{\draftstamp}{\textcolor{red}{(\number\month/\number\day/\the\year)}}
-
 \nouppercaseheads
 \makepagestyle{nonumbers}
 \createmark{chapter}{left}{nonumber}{}{}
 \createmark{section}{right}{nonumber}{}{}
-\makeevenhead{nonumbers}{\thepage\qquad{\itshape\leftmark}}{\draftstamp}{}
-\makeoddhead{nonumbers}{}{\draftstamp}{{\itshape\rightmark}\qquad\thepage}
+\makeevenhead{nonumbers}{\thepage\qquad{\itshape\leftmark}}{}{}
+\makeoddhead{nonumbers}{}{}{{\itshape\rightmark}\qquad\thepage}
 
 \addbibresource{bibliography.bib}
 
@@ -48,32 +47,28 @@
 
 \title{\textbf{Exceptions in Message Passing Interpretation of Substructural Logic}}
 \author{Shengchao Yang}
-\date{\draftstamp}
-\Year{2024}
-% \trnumber{CMU-CS-TODO}
 
-% \committee{
-% Sleve McDichael, Chair \\
-% Dwigt Rortugal \\
-% Bobson Dugnutt \\
-% Todd Bonzalez, Fighting Baseball University
-% }
-
-% \support{Research credit statement.}
-
-\keywords{Topic, Another Topic}
+\keywords{Exceptions, Affine Logic, Session Types, Concurrent communication}
 
 \maketitle
 
 \pagestyle{nonumbers}
 
 \begin{abstract}
-Abstract.
+  Session types are used to describe the structure of communications through
+  channels. Prior research has established a relationship between intuitionistic
+  linear logic and process calculus. 
+  Exceptions as an important feature in programming triggers research on formulating communication failures in $\pi$-calculus.
+  To bridging this gap between message passing and exceptions, 
+  our approach propose a new type system containing explicit channel cancellation and exception handling constructors under classical affine logic.
+  We proved the correctness of our type system by showing session fidelity and deadlock freedom. 
+  We implement an interpreter for our language and test on several examples to compare with the expected process behavior.
+  Furthermore, we explore the possibility to represent some programming features such as non-exhasutive match in our language using the exception mechanism. 
 \end{abstract}
 
 \chapter{Acknowledgements}
 
-Text.
+TBD
 
 \cleardoublepage
 \tableofcontents
@@ -82,29 +77,147 @@ Text.
 
 \chapter{Introduction}
 
-Text.
+Linear logic is a refinement of intuitionistic logic that does not satisfy weakening and contraction. 
+It emphasizes the management of resources, where each formula should be used exactly once. 
+Informally speaking, the assumption cannot be too strong for the conclusion, such as $A, B \vdash B$.
+The Curry-Howard isomorphism states a correspondence between logical proof theory and computational type theory \citep{Howard1980}.
+The computational interpretation of linear logic, firstly given by Abramsky, lays the foundation for the connection between $\pi$-calculus and linear logic \citep{Abramsky1933}. 
+Later on, an expressive formulation of intuitionistic linear logic provides a correspondence between linear proofs and processes, 
+which gives rise to two important ideas: proofs as processes and cut as computation \citep{Caires2014}.
 
-\section{Section name}
+On the other hand, exceptions have been a practical topic during the development of programming languages.
+Programmers can utilize exceptions to write explicit control flow for their code. In most functional programming languages, exceptions are managed by expression constructors. 
+For instance, in Standard ML, exceptions are raised by the keyword \texttt{raise} and caught by the keyword \texttt{handle} \citep{Milner1997}. 
+In concurrent programming models, communication failures within concurrent programming models remain both inevitable and critical. 
+Previous research applies affine session types that relax the linearity of session types to incorporate error handling \citep{Mos2014}.
 
-Text \citep{HoTT13}.
+Given the relationship between linear propositions and session types, our goal is to implement exceptions under the computational interpretation of linear logic.
+However, exceptions are inherently incompatible with linear logic. 
+Let us assume we have some kind of exception handler where part of its processes are designated to deal with exceptional situations. 
+In other words, it will be activated if an exception is raised. 
+This violates linearity, as the resources allocated for the exception handler will not be utilized if no exceptions occur. 
+Affinity, on the other hand, allows us to model such behavior, where resources that are not used can be weakened.
+
+Our solution works under affine systems due to the nature of exceptions explained above. 
+Weakening provides a way to discard resources that are not used, and we interpret this structural rule as a process $\texttt{cancel}$ to cancel a channel. 
+We add two new constructors to the type system: $\texttt{raise}$ and $\texttt{try}\ \texttt{catch}$. 
+Although these constructors look similar to most exception handling mechanisms in programming languages, 
+they are interpreted as processes, where the first signals an exception during the computation of processes, and the second catches the signal and activates another branch concurrently.
+
+We briefly summarize the outline and contributions of this thesis.
+In the rest of Chapter $1$, we will introduce how sequent proofs correlate to processes and classical affine logic.
+Chapter $2$ will present the new type system we propose that deals with exceptions and its statics.
+Computation steps and meta theories that ensures safety of our type system will be formalized and proved in Chapter $3$. 
+In Chapter 4, we will demonstrate the implementation of the language interpreter and provide examples of traced processes.
+Finally, Chapter $5$ will show how to represent non-exhaustive matches under our type system, with commentary on related work, limitations of the current approach, and avenues for future research.
+
+\section{Proofs as processes}
+Below is a sequent proof in intuitionistic linear logic.
+\[
+  x_1 : A_1, x_2 : A_2, \ldots, x_n : A_n \vdash c : C
+\]
+where variables $x_1, x_2, \ldots, x_n, c$ represents distinct channels, propositions $A_1, A_2, \ldots, C$ represents session types, 
+and annotation $x_i : A_i$ means the messages send along channel $x_i$ must obey the communication behavior specified by $A_i$.
+Under such setting, we can regard the sequent as a process that uses all the channels in the antecedent and provides a channel in the succedent.
+
+The cut is included as a primitive rule in the system.
+In proof theory, the cut allows for a composition of two separate proofs into a single proof, and correspondingly, a parallel composition of two processes connected by a channel.
+\[
+  \infer[\text{cut}_A]{\Gamma, \Gamma' \vdash c : C}{
+    \deduce{\Gamma \vdash x : A}{P}
+    &
+    \deduce{\Gamma', x : A \vdash c : C}{Q}
+  }
+\]
+
+The left premise represents a process $P$ that provides channel $x$, and the right premise represents another process $Q$ that uses channel $x$. 
+In other words, the cut process $P$ communicates with process $Q$ through channel $x$ specified by $A$. 
+The linearity of propositions ensures that the channel $x$ has only two endpoints, 
+and other processes besides $P$ and $Q$ will not have access to channel $x$, 
+since every channel has a distinct variable name.
+
+The cut rule can also be understood as the spawning of a new process. 
+The main thread spawns a new process $P$, splits the current resources, creates a new channel $x$,
+assigns it as process $P$'s endpoint, and continues to execute the rest of the process $Q$ with the remaining resources in parallel.
+
+\clearpage
+\section{Classical linear logic}
+In classical logic, the judgement has the following form.
+\[
+  A_1, A_2, \ldots, A_n \vdash C_1, C_2, \ldots, C_m
+\]
+which means the conjunction of $A_i$'s implies the disjunction of $C_j$'s.
+The negation of a proposition becomes a new primitive connective in classical logic, which distinct from intuitionistic logic where $\neg A$ is as same as $A \supset \bot$.
+\[
+  \infer[\text{negL}]{\Gamma, \neg A \vdash \Delta}{\Gamma \vdash A, \Delta}
+  \qquad
+  \infer[\text{negR}]{\Gamma \vdash \neg A, \Delta}{\Gamma, A \vdash \Delta}
+\]
+The behavior of negation flips around the proposition between the antecedent and the succedent. 
+In other words, it assumes the contrary and tries to derive a contradiction.
+
+Previous research has shown that classical linear logic can be viewed as $\pi$-calculus
+by interpreting the negation as a dual operation on session types \citep{Wadler2012}. 
+Defining the dual of a session type $A$ is $A^{\bot}$, we can rewrite the above the judgement in a single-sided form.
+\[
+  \vdash A_1^\bot, A_2^\bot, \ldots, A_n^\bot, C_1, C_2, \ldots, C_m
+\]
+Instead of cutting a proposition on different sides of inference, we cut a proposition against its dual.
+\[
+  \infer[\text{cut}_A]{\vdash \Delta, \Delta'}{
+    \deduce{\vdash A, \Delta}{P}
+    &
+    \deduce{\vdash A^\bot, \Delta'}{Q}
+  }
+\]
+Since the channel that connects process $P$ and process $Q$ are on both sides, classical logic blurs the distinction between input and output.
+\[
+  x_1 : A_1, x_2 : A_2, \ldots, x_n : A_n \vdash y_1 : C_1, y_2 : C_2, \ldots, y_m : C_m
+\]
+The annotated two-sided judgment can be viewed as a process that communicates along channels $x_1, x_2, \ldots, x_n, y_1, y_2, \ldots, y_m$, where each channel obeys its protocol requirements.
+It is possible to demonstrate the correctness of this system by converting it back to intuitionistic linear logic through double negation translation \citep{Friedman1978}.
+Such translation has practical applications, such as continuation passing style translation.
 
 \clearpage
 
-Sample left page.
-
+\section{Affine logic}
+Affine logic is a substructural logic that rejects the structural rule of contraction. 
+In other words, it is a form of linear logic that retains the weakening rule. 
+There are two ways of formalizing weakening rules. 
+The first formulation is implicit weakening, which modifies the original rules, 
+such as the identity rule, to allow for the closure of the proof by silently discarding all propositions in the context.
+\[
+  \infer[\textbf{1}R]{\Gamma \vdash \textbf{1}}{}
+  \qquad
+  \infer[\text{identity}]{\Gamma, A \vdash A}{}
+\]
+Another formulation adds the explicit weakening rules.
+\[
+  \infer[\text{weaken}]{\Gamma, A \vdash C}{\Gamma \vdash C}
+\]
+Under the classical setting, we will have two weakening rules, one for the antecedent and another one for the succedent.
+We can establish the equivalence of these two formulations. 
+However, concerning the computational interpretation, the explicit formulation holds greater favorability for two reasons.
+Firstly, it offers explicit resource control for programmers. 
+Consider annotating the weakening rule as follows.
+\[
+  \infer[\text{weaken}]{\Gamma, x : A \vdash c : C}{
+    \deduce{\Gamma \vdash c : C}{P}
+  }
+\]
+We can interpret this rule as a process that discards the future usage of channel $x$ from resources and proceeds with process $P$. 
+Secondly, static checking for the interpreter does not align well with implicit weakening. 
+According to implicit rules, when the process reaches its end, all channels in the context will be discarded. 
+This fails to verify whether the programmer intentionally or accidentally left some channels unused.
 \clearpage
 
-Sample right page.
+\chapter{Type system}
 
-\chapter{Stuff}
-
-Stuff.
+TBD
 
 \appendix
 
-\chapter{More stuff}
-
-foo
+\chapter{Proofs}
 
 \backmatter
 
