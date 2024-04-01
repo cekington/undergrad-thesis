@@ -1,9 +1,9 @@
-\documentclass[12pt]{memoir}
+\documentclass[12pt, openany]{memoir}
 
 \usepackage{latexsym,amsmath,amsfonts,amssymb,amsthm}
 \usepackage{url}
 \usepackage{proof}
-\usepackage[style=alphabetic,natbib=true,backend=bibtex,maxbibnames=99]{biblatex}
+\usepackage[style=alphabetic,natbib=true,backend=biber,maxbibnames=99]{biblatex}
 \usepackage[colorlinks=true]{hyperref}
 \usepackage[nameinlink,capitalize,noabbrev]{cleveref}
 \usepackage{graphicx}
@@ -13,20 +13,31 @@
 \RequirePackage[libertine]{newtxmath}
 \usepackage{microtype}
 \usepackage{cmutr}
+\usepackage{minted}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage{wasysym}
+\usepackage{mathpartir}
+\usepackage{stmaryrd} 
 
 \setlrmarginsandblock{1.25in}{*}{1}
 \setulmarginsandblock{1.5in}{*}{1}
 \setheaderspaces{*}{2\onelineskip}{*}
 \checkandfixthelayout
 
+\newcommand*{\pare}[0]{\mathbin{\bindnasrepma}}
+\newcommand*{\send}[2]{\textbf{send}\ #1\ #2}
+\newcommand*{\recv}[2]{\textbf{recv}\ #1\ #2}
+\newcommand*{\fwd}[2]{\textbf{fwd}\ #1\ #2}
+\newcommand*{\cancel}[1]{#1 \lightning}
+\newcommand*{\craise}[1]{\textbf{raise}\ #1}
+\newcommand*{\trycatch}[3]{#3 \twoheadleftarrow	\textbf{try}\ #1(#3)\ \textbf{catch}\ #2(#3)}
+\newcommand*{\spawn}[3]{#3 \leftarrow #1(#3);\ #2(#3)}
+\newcommand*{\judge}[4]{#1 \vdash #2 :: #3; #4}
+\newcommand*{\procObj}[4]{\textbf{proc}(#1/#2/#3/#4)}
+
 % Check out the memoir manual for other chapter styles.
 \chapterstyle{default}
-
-% Include the bibliography in the table of contents.
-\defbibheading{bibliography}[\bibname]{%
-  \chapter*{#1}%
-  \markboth{#1}{#1}%
-  \addcontentsline{toc}{chapter}{\bibname}}
 
 \setsecnumdepth{subsection}
 
@@ -39,13 +50,15 @@
 
 \addbibresource{bibliography.bib}
 
+\input{infrastructure.tex}
+
 \begin{document}
 
 \frontmatter
 
 \pagestyle{empty}
 
-\title{\textbf{Exceptions in Message Passing Interpretation of Substructural Logic}}
+\title{\textbf{Exceptions in a Message Passing Interpretation of Substructural Logic}}
 \author{Shengchao Yang}
 
 \keywords{Exceptions, Affine Logic, Session Types, Concurrent communication}
@@ -55,15 +68,13 @@
 \pagestyle{nonumbers}
 
 \begin{abstract}
-  Session types are used to describe the structure of communications through
-  channels. Prior research has established a relationship between intuitionistic
-  linear logic and process calculus. 
-  Exceptions as an important feature in programming triggers research on formulating communication failures in $\pi$-calculus.
-  To bridging this gap between message passing and exceptions, 
-  our approach propose a new type system containing explicit channel cancellation and exception handling constructors under classical affine logic.
-  We proved the correctness of our type system by showing session fidelity and deadlock freedom. 
-  We implement an interpreter for our language and test on several examples to compare with the expected process behavior.
-  Furthermore, we explore the possibility to represent some programming features such as non-exhasutive match in our language using the exception mechanism. 
+  Session types are used to describe the structure of communications across channels. Previous research has established a message-passing interpretation of intuitionistic linear logic. 
+  Meanwhile, communication failures have been an important research topic in session types. 
+  However, the exception handling mechanism has not been well studied in the context of message passing. 
+  To bridge this gap, we studied the interpretation of classical affine logic and proposed a new type system containing features such as explicit channel cancellation and exception handling constructors. 
+  Our type system ensures program correctness by enforcing session fidelity and deadlock freedom. 
+  To experiment, we implemented an interpreter for our language and tested it on several examples to match the expected process behavior. 
+  Additionally, we explore the possibility of representing some programming features, such as non-exhaustive matches, in our language using the exception mechanism.
 \end{abstract}
 
 \chapter{Acknowledgements}
@@ -80,16 +91,16 @@ TBD
 Linear logic is a refinement of intuitionistic logic that does not satisfy weakening and contraction. 
 It emphasizes the management of resources, where each formula should be used exactly once. 
 Informally speaking, the assumption cannot be too strong for the conclusion, such as $A, B \vdash B$.
-The Curry-Howard isomorphism states a correspondence between logical proof theory and computational type theory \citep{Howard1980}.
-The computational interpretation of linear logic, firstly given by Abramsky, lays the foundation for the connection between $\pi$-calculus and linear logic \citep{Abramsky1933}. 
+The Curry-Howard isomorphism states a correspondence between logical proof theory and computational type theory \cite{Howard1980}.
+The computational interpretation of linear logic, firstly given by Abramsky, lays the foundation for the connection between $\pi$-calculus and linear logic \cite{Abramsky1933}. 
 Later on, an expressive formulation of intuitionistic linear logic provides a correspondence between linear proofs and processes, 
-which gives rise to two important ideas: proofs as processes and cut as computation \citep{Caires2014}.
+which gives rise to two important ideas: proofs as processes and cut as computation \cite{Caires2014}.
 
 On the other hand, exceptions have been a practical topic during the development of programming languages.
 Programmers can utilize exceptions to write explicit control flow for their code. In most functional programming languages, exceptions are managed by expression constructors. 
-For instance, in Standard ML, exceptions are raised by the keyword \texttt{raise} and caught by the keyword \texttt{handle} \citep{Milner1997}. 
-In concurrent programming models, communication failures within concurrent programming models remain both inevitable and critical. 
-Previous research applies affine session types that relax the linearity of session types to incorporate error handling \citep{Mos2014}.
+For instance, in Standard ML, exceptions are raised by the keyword \texttt{raise} and caught by the keyword \texttt{handle} \cite{Milner1997}. 
+In concurrent models, communication failures remain both inevitable and critical. 
+Previous research applies affine session types that relax the linearity of session types to incorporate error handling \cite{Mos2014}.
 
 Given the relationship between linear propositions and session types, our goal is to implement exceptions under the computational interpretation of linear logic.
 However, exceptions are inherently incompatible with linear logic. 
@@ -102,31 +113,33 @@ Our solution works under affine systems due to the nature of exceptions explaine
 Weakening provides a way to discard resources that are not used, and we interpret this structural rule as a process $\texttt{cancel}$ to cancel a channel. 
 We add two new constructors to the type system: $\texttt{raise}$ and $\texttt{try}\ \texttt{catch}$. 
 Although these constructors look similar to most exception handling mechanisms in programming languages, 
-they are interpreted as processes, where the first signals an exception during the computation of processes, and the second catches the signal and activates another branch concurrently.
+they are interpreted as processes, where the first signals an exception during the computation of processes,
+and the second catches the signal and activates an additional process that handles the exception concurrently.
 
 We briefly summarize the outline and contributions of this thesis.
-In the rest of Chapter $1$, we will introduce how sequent proofs correlate to processes and classical affine logic.
+In the rest of Chapter $1$, we will introduce the correlation between sequent proofs and processes, classical affine logic, and exceptions in functional programming languages.
 Chapter $2$ will present the new type system we propose that deals with exceptions and its statics.
 Computation steps and meta theories that ensures safety of our type system will be formalized and proved in Chapter $3$. 
 In Chapter 4, we will demonstrate the implementation of the language interpreter and provide examples of traced processes.
 Finally, Chapter $5$ will show how to represent non-exhaustive matches under our type system, with commentary on related work, limitations of the current approach, and avenues for future research.
-
-\section{Proofs as processes}
-Below is a sequent proof in intuitionistic linear logic.
+\section{Proofs as processes} 
+A sequent proof of a proposition provides its computational meaning.
+We use proof terms to record the structure of proofs such that we can reconstruct the proof by its proof term.
+In the context of intuitionistic linear logic, the proof term corresponds to a process. 
+Below is an annotated sequent proof in intuitionistic linear logic.
 \[
-  x_1 : A_1, x_2 : A_2, \ldots, x_n : A_n \vdash c : C
+  x_1 : A_1, x_2 : A_2, \ldots, x_n : A_n \vdash P :: c : C
 \]
 where variables $x_1, x_2, \ldots, x_n, c$ represents distinct channels, propositions $A_1, A_2, \ldots, C$ represents session types, 
 and annotation $x_i : A_i$ means the messages send along channel $x_i$ must obey the communication behavior specified by $A_i$.
-Under such setting, we can regard the sequent as a process that uses all the channels in the antecedent and provides a channel in the succedent.
+Under such setting, we can regard the sequent as a process $P$ that uses all the channels in the antecedent and provides a channel in the succedent.
 
-The cut is included as a primitive rule in the system.
 In proof theory, the cut allows for a composition of two separate proofs into a single proof, and correspondingly, a parallel composition of two processes connected by a channel.
 \[
-  \infer[\text{cut}_A]{\Gamma, \Gamma' \vdash c : C}{
-    \deduce{\Gamma \vdash x : A}{P}
+  \infer[\text{cut}_A]{\Gamma, \Gamma' \vdash P \mid Q :: c : C}{
+    \Gamma \vdash P :: x : A
     &
-    \deduce{\Gamma', x : A \vdash c : C}{Q}
+    \Gamma', x : A \vdash Q :: c : C
   }
 \]
 
@@ -139,14 +152,12 @@ since every channel has a distinct variable name.
 The cut rule can also be understood as the spawning of a new process. 
 The main thread spawns a new process $P$, splits the current resources, creates a new channel $x$,
 assigns it as process $P$'s endpoint, and continues to execute the rest of the process $Q$ with the remaining resources in parallel.
-
-\clearpage
-\section{Classical linear logic}
+\section{Classical linear logic} \label{sec:cll}
 In classical logic, the judgement has the following form.
 \[
   A_1, A_2, \ldots, A_n \vdash C_1, C_2, \ldots, C_m
 \]
-which means the conjunction of $A_i$'s implies the disjunction of $C_j$'s.
+which means the conjunction of antecedents $\bigwedge_{i = 1}^n A_i$ implies the disjunction of the succedents $\bigvee_{j = 1}^m C_j$.
 The negation of a proposition becomes a new primitive connective in classical logic, which distinct from intuitionistic logic where $\neg A$ is as same as $A \supset \bot$.
 \[
   \infer[\text{negL}]{\Gamma, \neg A \vdash \Delta}{\Gamma \vdash A, \Delta}
@@ -157,7 +168,7 @@ The behavior of negation flips around the proposition between the antecedent and
 In other words, it assumes the contrary and tries to derive a contradiction.
 
 Previous research has shown that classical linear logic can be viewed as $\pi$-calculus
-by interpreting the negation as a dual operation on session types \citep{Wadler2012}. 
+by interpreting the negation as a dual operation on session types \cite{Wadler2012}. 
 Defining the dual of a session type $A$ is $A^{\bot}$, we can rewrite the above the judgement in a single-sided form.
 \[
   \vdash A_1^\bot, A_2^\bot, \ldots, A_n^\bot, C_1, C_2, \ldots, C_m
@@ -165,21 +176,24 @@ Defining the dual of a session type $A$ is $A^{\bot}$, we can rewrite the above 
 Instead of cutting a proposition on different sides of inference, we cut a proposition against its dual.
 \[
   \infer[\text{cut}_A]{\vdash \Delta, \Delta'}{
-    \deduce{\vdash A, \Delta}{P}
+    \vdash A, \Delta
     &
-    \deduce{\vdash A^\bot, \Delta'}{Q}
+    \vdash A^\bot, \Delta'
   }
 \]
-Since the channel that connects process $P$ and process $Q$ are on both sides, classical logic blurs the distinction between input and output.
+In classical logic, we know a proposition $A$ is either true or its dual proposition $A^\bot$ is true.
+In the above cut rule, we can eliminate the usage of $A$ by connecting the remaining context using disjunction. 
+
+Under the interpretation of proofs as processes, we can write the annotated two-sided judgement as follows.
 \[
-  x_1 : A_1, x_2 : A_2, \ldots, x_n : A_n \vdash y_1 : C_1, y_2 : C_2, \ldots, y_m : C_m
+  x_1 : A_1, x_2 : A_2, \ldots, x_n : A_n \vdash P :: y_1 : C_1, y_2 : C_2, \ldots, y_m : C_m
 \]
-The annotated two-sided judgment can be viewed as a process that communicates along channels $x_1, x_2, \ldots, x_n, y_1, y_2, \ldots, y_m$, where each channel obeys its protocol requirements.
-It is possible to demonstrate the correctness of this system by converting it back to intuitionistic linear logic through double negation translation \citep{Friedman1978}.
+This judgement can be viewed as a process $P$ that communicates along channels $x_1, x_2, \ldots, x_n$
+and $y_1, y_2, \ldots, y_m$, where each channel obeys its protocol requirements.
+We do not distinguish whether a channel is used or provided, because we can always use the negation rule to flip the propositions.
+In other word, classical logic blurs the distinction between client and server roles in concurrent communication.
+It is possible to demonstrate the safety of this system by converting it back to intuitionistic linear logic through double negation translation \cite{Friedman1978}.
 Such translation has practical applications, such as continuation passing style translation.
-
-\clearpage
-
 \section{Affine logic}
 Affine logic is a substructural logic that rejects the structural rule of contraction. 
 In other words, it is a form of linear logic that retains the weakening rule. 
@@ -199,21 +213,270 @@ Under the classical setting, we will have two weakening rules, one for the antec
 We can establish the equivalence of these two formulations. 
 However, concerning the computational interpretation, the explicit formulation holds greater favorability for two reasons.
 Firstly, it offers explicit resource control for programmers. 
-Consider annotating the weakening rule as follows.
+Let us annotate the explicit weakening rule as follows.
 \[
   \infer[\text{weaken}]{\Gamma, x : A \vdash c : C}{
     \deduce{\Gamma \vdash c : C}{P}
   }
 \]
 We can interpret this rule as a process that discards the future usage of channel $x$ from resources and proceeds with process $P$. 
-Secondly, static checking for the interpreter does not align well with implicit weakening. 
-According to implicit rules, when the process reaches its end, all channels in the context will be discarded. 
-This fails to verify whether the programmer intentionally or accidentally left some channels unused.
-\clearpage
+Discarding resources is a common practice in programming. For example, below is an implementation of a function that returns the length of a list.
+\inputminted{ocaml}{code/length.ml}
+In the inductive case where the list is not empty, the function discards the head of the list and proceeds with the remain list.
+If we enforce linearity in this function, we will have to do unnecessary operations to use the element of the list, which is not appropriate.
+
+Besides the usage of dropping resources, static checking for the interpreter does not align well with implicit weakening. 
+According to implicit rule, when the process reaches its end, all channels in the context will be discarded. 
+This fails to verify whether the programmer intentionally or accidentally left some resources unused.
 
 \chapter{Type system}
+\section{Propositions} \label{sec:propsyntax}
+The syntax of the propositions are defined in \cref{fig:propositions}.
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{c r l l}
+    Propositions\ $A, B$ & $::=$ & $\textbf{1}$ & 'One', nullary case of $\otimes$ \\ 
+    & $\mid$ & $\boldsymbol{\bot}$ & 'Bottom', nullary case of $\pare$  \\
+    & $\mid$ & $A \otimes B$ & 'Tensor', communicates with $A$ and behaves as $B$  \\  
+    & $\mid$ & $A \pare B$ & 'Par', communicates with $A$ and behaves as $B$ \\    
+    & $\mid$ & $\& \{l : A_l\}_{l \in L}$ & 'With', $n-$ary choices distinguished by labels $l$ \\
+    & $\mid$ & $\oplus \{l : A_l\}_{l \in L}$ & 'Plus', $n-$ary choices distinguished by labels $l$ 
+   \end{tabular}
+  \caption{Syntax of propositions}
+  \label{fig:propositions}
+\end{figure}
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{r c l l}
+    $(A)^\bot$ & $\longrightarrow$ & $A^\bot$ & $A$ atom \\ 
+    $\textbf{1}^\bot$ & $\longrightarrow$ & $\boldsymbol{\bot}$ & \\
+    $\boldsymbol{\bot} ^ \bot$ & $\longrightarrow$ & $\textbf{1}$ & \\
+    $(A \otimes B)^\bot$ & $\longrightarrow$ & $A^\bot\pare B^\bot$ &  \\  
+    $(A \pare B)^\bot$ & $\longrightarrow$ & $A^\bot \otimes B^\bot$ & \\    
+    $(\oplus\{l : A_l\}_{l \in L})^\bot$ & $\longrightarrow$ & $\& \{l : A_l^\bot\}_{l \in L}$ & \\ 
+    $(\&\{l : A_l\}_{l \in L})^\bot$ & $\longrightarrow$ & $\oplus \{l : A_l^\bot\}_{l \in L}$ & \\
+   \end{tabular}
+  \caption{Dual operations on propositions}
+  \label{fig:dual}
+\end{figure}
+The propositions can be classified into two categories: multiplicatives ($\otimes, \pare$) and additives ($\oplus, \&$).
+The behavior of each type based on whether it is in the antecedent or the succedent of a sequent.
+Because of the dual operation in classical logic mentioned in \cref{fig:dual}, the behavior of a session type in antecedent is as same as its dual in the succedent and vice versa.
+It is worth noticing that taking the dual of a proposition twice will result in the original proposition, i.e. ${(A^\bot)}^\bot = A$.
 
-TBD
+To simply the explanation of the propositions, we discuss its logical behavior of each proposition in the succedent
+through its inference right rule.
+\begin{itemize}
+  \item One
+  \[
+    \infer[\textbf{1}R]{\cdot \vdash \textbf{1}}{}
+  \]
+  The empty truth, called One, holds only if there are no resources. 
+  This is the nullary case of the multiplicative conjunction.
+  \item Bottom
+  \[
+    \infer[\boldsymbol{\bot} R]{\Gamma \vdash \boldsymbol{\bot}, \Delta}{
+      \Gamma \vdash \Delta
+    }
+  \]
+  Bottom is a nullary case of the multiplicative disjunction.
+  This proposition does not contain any resources and can be dropped freely.
+  \item Tensor
+  \[
+    \infer[\otimes R]{\Gamma_1, \Gamma_2 \vdash A \otimes B, \Delta_1, \Delta_2}{
+      \Gamma_1 \vdash A, \Delta_1
+      &
+      \Gamma_2 \vdash B, \Delta_2
+    }
+  \]
+  The multiplicative conjunction $A \otimes B$ is true if $A$ and $B$ are both true.
+  We need to subdivide the resources, use some of them to prove $A$ the other to prove $B$. 
+  \item Par
+  \[
+    \infer[\pare R]{\Gamma \vdash A \pare B, \Delta}{
+      \Gamma \vdash A, B, \Delta
+    }
+  \]
+  The multiplicative disjunction $A \pare B$ is true if given a refutation of $A$, $B$ is true,
+  or given a refutation of $B$, $A$ is true in the current context.
+  \item With
+  \[
+    \infer[\& R]{\Gamma \vdash \&\{l : A_l\}_{l \in L}, \Delta}{
+      \Gamma \vdash A_l, \Delta
+      &
+      \forall l \in L
+    }
+  \]
+  The additive conjunction $\&\{l : A_l\}_{l \in L}$ is true if for all $l \in L$, $A_l$ are true separately with the current resources.
+  \item Plus
+  \[
+    \infer[\oplus R_k]{\Gamma \vdash \oplus\{l : A_l\}_{l \in L}, \Delta}{
+      \Gamma \vdash A_k, \Delta
+      &
+      k \in L
+    }
+  \]
+  The additive disjunction $\oplus\{l : A_l\}_{l \in L}$ is true if there exists some $k \in L$ such that $A_k$ is true with the current resources.
+  Therefore, the number of rules is equal to the number of labels in $L$.
+\end{itemize}
+The linear implication $A \multimap B$ is not included in the system because it can be derived from $A^\bot \pare B$.
+We can prove this equivalence. Assume $\Gamma \vdash A \multimap B$, 
+by the invertibility, we have $\Gamma, A \vdash B$.
+Using the dual operator, we can derive $\Gamma \vdash A^\bot, B$.
+By $\pare R$, we conclude $\Gamma \vdash A \pare B$.
+Since the proof is reversible, we can derive the other direction as well.
+
+We include the inference rule of identity and cut in our system.
+\[
+  \infer[\text{identity}_A]{A \vdash A}{}
+  \quad
+  \infer[\text{cut}_A]{\Gamma_1, \Gamma_2 \vdash \Delta_1, \Delta_2}{
+    \Gamma_1 \vdash A, \Delta_1
+    &
+    \Gamma_2, A \vdash \Delta_2
+  }
+\]
+The identity rule closes the proof by ensuring that there is only one same proposition on each side of the sequent.
+The cut rule allows us to split the context to prove some arbitrary propositions $A$ and then combine the results to prove the conclusion with the remaining context.
+
+The structural rule of weakening is included in the system. Since we are working with a two-sided sequent, 
+we have weakening rules for both the antecedent and the succedent.
+\[
+  \infer[\text{weaken}L]{
+    \Gamma, A \vdash \Delta
+  }{
+    \Gamma \vdash \Delta
+  }
+  \quad
+  \infer[\text{weaken}R]{
+    \Gamma \vdash A, \Delta
+  }{
+    \Gamma \vdash \Delta
+  }
+\]
+
+To avoid arbitrary splitting of the context and extra premises, we modify the $\otimes R$ as the following:
+\[
+  \infer[\otimes R^*]{\Gamma, A \vdash A \otimes B, \Delta}{
+    \Gamma \vdash B, \Delta
+  }
+\]
+To prove this rule sensible in the original logical system, we need to show that the original $\otimes R$ can be derived from $\otimes R^*$ and vice versa.
+\begin{itemize}
+  \item Assume we have a derivation $\mathcal{D}_1$ for $\Gamma_1 \vdash A, \Delta_1$ and $\mathcal{D}_2$ for $\Gamma_2 \vdash B, \Delta_2$.
+  We can create a derivation for $\Gamma_1, \Gamma_2 \vdash A \otimes B, \Delta_1, \Delta_2$ without using $\otimes R$ rule as the following:
+  \[
+    \infer[\text{cut}_A]{\Gamma_1, \Gamma_2 \vdash A \otimes B, \Delta_1, \Delta_2}{
+      \deduce{\Gamma_1 \vdash A, \Delta_1}{\mathcal{D}_1}
+      &
+      \infer[\otimes R^*]{\Gamma_2, A \vdash A \otimes B, \Delta_2}{
+        \deduce{\Gamma_2 \vdash B, \Delta_2}{\mathcal{D}_2}
+      }
+    }
+  \]
+  \item Assume we have a derivation $\mathcal{D}$ for $\Gamma \vdash B, \Delta$.
+  We can create a derivation for $\Gamma, A \vdash A \otimes B, \Delta$ without using $\otimes R^*$ rule as the following:
+  \[
+    \infer[\otimes R]{\Gamma, A \vdash A \otimes B, \Delta}{
+      \infer[\text{identity}_A]{A \vdash A}{}
+      &
+      \deduce{\Gamma \vdash B, \Delta}{\mathcal{D}}
+    }
+  \]
+\end{itemize}
+We can rewrite $\pare L^*$ rule accordingly and justify its equivalence with the original $\pare L$. 
+\[
+  \infer[\pare L^*]{\Gamma, A \pare B \vdash A, \Delta}{
+    \Gamma \vdash B, \Delta
+  }
+\]
+\section{Processes}
+In this section, we will annotate the proofs with proof terms as interpret them as processes.
+Moreover, we will introduce our exception handling mechanism in our system. 
+We first present the syntax of the processes in \cref{fig:processes}.
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{r r r l}
+    Messages & $M$ & $::=$ & $()$ \\
+    & & $\mid$ & $l$ \\
+    & & $\mid$ & $x$ \\  
+    Continuations & $K$ & $::=$ & $(() \Rightarrow P)$ \\    
+    & & $\mid$ & $(l \Rightarrow P_l)_{l \in L}$ \\
+    & & $\mid$ & $(x \Rightarrow P(x))$ \\
+    Processes & $P, Q$ & $::=$ & $\send{x}{M}$ \\
+    & & $\mid$ & $\recv{x}{K}$ \\
+    & & $\mid$ & $\fwd{y}{x}$ \\
+    & & $\mid$ & $\cancel{x}$ \\
+    & & $\mid$ & $\spawn{P}{Q}{x}$ \\
+    & & $\mid$ & $\craise{M}$ \\
+    & & $\mid$ & $\trycatch{P}{Q}{x}$ \\
+    & & $\mid$ & $P; Q$ \\
+   \end{tabular}
+  \caption{Syntax of processes}
+  \label{fig:processes}
+\end{figure}
+We separate the terms into three categories: messages, continuations, and processes. 
+We use variables to represent channels and strings to represent labels. 
+We require the channels to have distinct names. 
+The information passed through channels is called messages, which can be either a unit message $()$, a label $l$, or a channel $x$. 
+The continuation specifies the behavior of the process after receiving a message. 
+Correspondingly, there are three kinds of continuations. $(() \Rightarrow P)$ is a unit continuation that waits for a unit message and continues with process $P$. 
+$(l \Rightarrow P_l)_{l \in L}$ is a branching continuation that selects to execute process $P_l$ based on the label $l$ it receives. 
+In other words, it has prepared the same number of processes as the number of labels in $L$. $(x \Rightarrow P(x))$ is a continuation that waits for a channel $x$ and continues with process $P(x)$. 
+We write $P(x)$ instead of $P$ to indicate that the process $P$ depends on the channel $x$.
+
+From the description above, we provide an intuition of how processes interact with each other. 
+Imagine a segment where one endpoint outputs a message and passes it to the other endpoint, 
+which works as a continuation that waits for the message through this segment. 
+We can see that each message has its own corresponding continuation. 
+This means that if the message passing through the segment is a label while the continuation is waiting for a channel, 
+the interaction will be stuck and cannot proceed. 
+We can use propositions as session types introduced in \cref{sec:propsyntax} to restrict channel behavior. 
+More details on this observation will be discussed in the operational semantics.
+
+We present the annotated inference rules in \cref{fig:static}, where proof terms are interpreted as processes.
+The judgement has the form $\judge{\Gamma}{P}{\Delta}{\Omega}$, 
+which means the process $P$ communicates along the channels in $\Gamma$ and $\Delta$ and has exception handler $\Omega$.
+Such rules are also called the static semantics of the type system.
+\begin{figure}
+  \begin{rules}
+    \defrule[\textbf{1}$R$][oneR]{}{\judge{\cdot}{\send{x}{()}}{x : \textbf{1}}{\Omega}}
+    \qquad
+    \defrule[\textbf{1}$L$][oneL]{\judge{\Gamma}{P}{\Delta}{\Omega}}{
+      \judge{\Gamma, x : \textbf{1}}{\recv{x}{(() \Rightarrow P)}}{\Delta}{\Omega}
+    }\\
+    \defrule[$\boldsymbol{\bot}R$][botR]{\judge{\Gamma}{P}{\Delta}{\Omega}}{
+      \judge{\Gamma}{\recv{x}{(() \Rightarrow P)}}{x : \boldsymbol{\bot}, \Delta}{\Omega}
+    }
+    \qquad
+    \defrule[$\boldsymbol{\bot}L$][botL]{}{\judge{x : \boldsymbol{\bot}}{\send{x}{()}}{\cdot}{\Omega}}\\
+    \defrule[$\otimes R$][tensorR]{\judge{\Gamma}{P}{x : B, \Delta}{\Omega}}{
+      \judge{\Gamma, y : A}{\send{x}{y}; P}{x : A \otimes B, \Delta}{\Omega}
+    }
+    \qquad
+    \defrule[$\otimes L$][tensorL]{\judge{\Gamma, x : B, y : A}{P}{\Delta}{\Omega}}{
+      \judge{\Gamma, x : A \otimes B}{\recv{x}{(y \Rightarrow P(y))}}{\Delta}{\Omega}
+    }\\
+    \defrule[$\pare R$][parR]{\judge{\Gamma}{P}{\Delta}{x : B, y : A, \Omega}}{
+      \judge{\Gamma}{\recv{x}{(y \Rightarrow P(y))}}{x : A \pare B, \Delta}{\Omega}
+    }
+    \qquad
+    \defrule[$\pare L$][tensorL]{\judge{\Gamma, x : B}{P}{\Delta}{\Omega}}{
+      \judge{\Gamma, x : A \pare B}{\send{x}{y}; P}{y : A, \Delta}{\Omega}
+    }\\
+    \defrule[$\oplus R_k$][orR]{\judge{\Gamma}{P}{A_k}{\Omega} \\ k \in L}{
+      \judge{\Gamma}{\send{x}{k}; P}{x : \oplus\{l : A_l\}_{l \in L}}{\Omega}
+    }
+    \quad
+    \defrule[$\oplus R$][orL]{\judge{\Gamma, x : A_l}{P_l}{\Delta}{\Omega} \\ (\forall l \in L)}{
+      \judge{\Gamma, x : \oplus\{l : A_l\}_{l \in L}}{\recv{x}{(l \Rightarrow P_l)_{l \in L}}}{\Delta}{\Omega}
+    }
+  \end{rules}
+  \caption{Static semantics of the type system}
+  \label{fig:static}
+\end{figure} 
+
+
 
 \appendix
 
