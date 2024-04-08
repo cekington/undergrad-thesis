@@ -19,6 +19,7 @@
 \usepackage{wasysym}
 \usepackage{mathpartir}
 \usepackage{stmaryrd} 
+\usepackage{braket}
 
 \setlrmarginsandblock{1.25in}{*}{1}
 \setulmarginsandblock{1.5in}{*}{1}
@@ -28,6 +29,7 @@
 \newcommand*{\pare}[0]{\mathbin{\bindnasrepma}}
 \newcommand*{\send}[2]{\textbf{send}\ #1\ #2}
 \newcommand*{\recv}[2]{\textbf{recv}\ #1\ #2}
+\newcommand*{\call}[3]{\textbf{call}\ #1\ (#2)\ [#3]}
 \newcommand*{\fwd}[2]{\textbf{fwd}\ #1\ #2}
 \newcommand*{\cancel}[1]{#1 \lightning}
 \newcommand*{\craise}[1]{\textbf{raise}\ #1}
@@ -35,6 +37,8 @@
 \newcommand*{\spawn}[3]{#3 \leftarrow #1(#3);\ #2(#3)}
 \newcommand*{\judge}[4]{#1 \vdash #2 :: #3; #4}
 \newcommand*{\procObj}[4]{\textbf{proc}(#1/#2/#3/#4)}
+\newcommand*{\config}[0]{\mathcal{C}}
+\newcommand*{\cancelSet}[0]{\mathcal{S}}
 
 % Check out the memoir manual for other chapter styles.
 \chapterstyle{default}
@@ -324,7 +328,7 @@ We can prove this equivalence. Assume $\Gamma \vdash A \multimap B$,
 by the invertibility, we have $\Gamma, A \vdash B$.
 Using the dual operator, we can derive $\Gamma \vdash A^\bot, B$.
 By $\pare R$, we conclude $\Gamma \vdash A \pare B$.
-Since the proof is reversible, we can derive the other direction as well.
+Since the proof is invertible, we can derive the other direction as well.
 
 We include the inference rule of identity and cut in our system.
 \[
@@ -400,6 +404,7 @@ We first present the syntax of the processes in \cref{fig:processes}.
     Messages & $M$ & $::=$ & $()$ \\
     & & $\mid$ & $l$ \\
     & & $\mid$ & $x$ \\  
+    % Love message & $L$ & $::=$ & \textbf{void} \\
     Continuations & $K$ & $::=$ & $(() \Rightarrow P)$ \\    
     & & $\mid$ & $(l \Rightarrow P_l)_{l \in L}$ \\
     & & $\mid$ & $(x \Rightarrow P(x))$ \\
@@ -436,8 +441,9 @@ More details on this observation will be discussed in the operational semantics.
 
 We present the annotated inference rules in \cref{fig:static}, where proof terms are interpreted as processes.
 The judgement has the form $\judge{\Gamma}{P}{\Delta}{\Omega}$, 
-which means the process $P$ communicates along the channels in $\Gamma$ and $\Delta$ and has exception handler $\Omega$.
+which means the process $P$ communicates along the channels in $\Gamma$ and $\Delta$ and has an exception handler $\Omega$.
 Such rules are also called the static semantics of the type system.
+
 \begin{figure}
   \begin{rules}
     \defrule[\textbf{1}$R$][oneR]{}{\judge{\cdot}{\send{x}{()}}{x : \textbf{1}}{\Omega}}
@@ -450,7 +456,7 @@ Such rules are also called the static semantics of the type system.
     }
     \qquad
     \defrule[$\boldsymbol{\bot}L$][botL]{}{\judge{x : \boldsymbol{\bot}}{\send{x}{()}}{\cdot}{\Omega}}\\
-    \defrule[$\otimes R$][tensorR]{\judge{\Gamma}{P}{x : B, \Delta}{\Omega}}{
+    \defrule[$\otimes R^*$][tensorR]{\judge{\Gamma}{P}{x : B, \Delta}{\Omega}}{
       \judge{\Gamma, y : A}{\send{x}{y}; P}{x : A \otimes B, \Delta}{\Omega}
     }
     \qquad
@@ -461,22 +467,312 @@ Such rules are also called the static semantics of the type system.
       \judge{\Gamma}{\recv{x}{(y \Rightarrow P(y))}}{x : A \pare B, \Delta}{\Omega}
     }
     \qquad
-    \defrule[$\pare L$][tensorL]{\judge{\Gamma, x : B}{P}{\Delta}{\Omega}}{
+    \defrule[$\pare L^*$][parL]{\judge{\Gamma, x : B}{P}{\Delta}{\Omega}}{
       \judge{\Gamma, x : A \pare B}{\send{x}{y}; P}{y : A, \Delta}{\Omega}
     }\\
     \defrule[$\oplus R_k$][orR]{\judge{\Gamma}{P}{A_k}{\Omega} \\ k \in L}{
-      \judge{\Gamma}{\send{x}{k}; P}{x : \oplus\{l : A_l\}_{l \in L}}{\Omega}
+      \judge{\Gamma}{\send{x}{k}; P}{x : \oplus\{l : A_l\}_{l \in L}, \Delta}{\Omega}
     }
     \quad
-    \defrule[$\oplus R$][orL]{\judge{\Gamma, x : A_l}{P_l}{\Delta}{\Omega} \\ (\forall l \in L)}{
+    \defrule[$\oplus L$][orL]{\judge{\Gamma, x : A_l}{P_l}{\Delta}{\Omega} \\ (\forall l \in L)}{
       \judge{\Gamma, x : \oplus\{l : A_l\}_{l \in L}}{\recv{x}{(l \Rightarrow P_l)_{l \in L}}}{\Delta}{\Omega}
+    }\\
+    \defrule[$\& R$][withR]{\judge{\Gamma, x : A_l}{P_l}{\Delta}{\Omega} \\ (\forall l \in L)}{
+      \judge{\Gamma, x : \&\{l : A_l\}_{l \in L}}{\recv{x}{(l \Rightarrow P_l)_{l \in L}}}{\Delta}{\Omega}
+    }
+    \quad
+    \defrule[$\& L_k$][withL]{\judge{\Gamma, x : A_k}{P}{\Delta}{\Omega} \\ k \in L}{
+      \judge{\Gamma, x : \&\{l : A_l\}_{l \in L}}{\send{x}{k}; P}{\Delta}{\Omega}
+    }\\
+    \defrule[weakenR][weakenR]{\judge{\Gamma}{P}{\Delta}{\Omega}}{
+      \judge{\Gamma}{\cancel{x}; P}{x : A, \Delta}{\Omega}
+    }
+    \qquad
+    \defrule[weakenL][weakenL]{\judge{\Gamma}{P}{\Delta}{\Omega}}{
+      \judge{\Gamma, x : A}{\cancel{x}; P}{\Delta}{\Omega}
+    }
+    \qquad
+    \defrule[$\text{identity}_A$][identity]{}{
+      \judge{y : A}{\fwd{x}{y}}{x : A}{\Omega}
+    }
+    \\
+    \defrule[$\text{cut}_A$][cut]{\judge{\Gamma_1}{P(x)}{x : A, \Delta_1}{\cdot} \\ \judge{\Gamma_2, x : A}{Q(x)}{\Delta_2}{\Omega}}{
+      \judge{\Gamma_1, \Gamma_2}{\spawn{P}{Q}{x}}{\Delta_1, \Delta_2}{\Omega}
+    }\\
+    \defrule[raise][raise]{\judge{\Gamma}{P}{\Delta}{\cdot}}{
+      \judge{\Gamma}{\craise{P}}{\Delta}{\Omega}
+    }\\
+    \defrule[$\text{trycatch}_A$][trycatch]{
+      \judge{\Gamma_1}{P(y)}{y : A, \Delta_1}{x : \text{exn}}\\
+      \judge{\Gamma_2, x : \text{exn}, y : A}{\text{erecv}\ x\ Q(y)}{\Delta_2}{\Omega}
+    }{
+      \judge{\Gamma_1, \Gamma_2}{\trycatch{P}{Q}{y}}{\Delta_1, \Delta_2}{\Omega}
     }
   \end{rules}
   \caption{Static semantics of the type system}
   \label{fig:static}
 \end{figure} 
 
+We first introduce the standard processes and explain how the information flows through channels. 
+Processes of $\textbf{send}$ and $\textbf{recv}$ are the elementary processes. 
+$\send{x}{M}$ sends a message $M$ along channel $x$, and $\recv{x}{K}$ receives a message from channel $x$ and
+continues with the continuation $K$. 
+Whether a process send or receive message depends on the polarity of the connective.
+Positive connectives, whose right rule is not invertible, will send a message in its right rule and receive a message in its left rule.
+The intuition is that non-invertible rules always make a choice, while invertible rules does not contain any extra information. 
 
+The proposition restricts the message type a channel can send or receive.
+A channel of type $\textbf{1}$ or $\boldsymbol{\bot}$ can only send or receive a unit message, respectively.
+In logic system, $\textbf{1}$ represents the empty truth, and $\boldsymbol{\bot}$ represents the empty falsehood.
+Therefore, a unit message is also called an empty message since it does not contain any useful information.
+An analogy can be drawn from unit message to computation suspension in functional programming. 
+Under call-by-value setting, an expression $e$ needs to be eagerly evaluated before it can be involved in future computation.
+However, if we replace $e$ by $\lambda (x : \texttt{unit}. e)$, then the computation of $e$ is suspended since a function is already a value.
+We can retrieve the computation by applying the function to a unit value $()$. 
+In the message passing setting, $\recv{x}{(() \Rightarrow P)}$ is a "suspended" process that waits for a unit message sent through channel $x$.
+
+A channel of product type $\otimes$ and $\pare$ can send or receive a channel and its type evolved accordingly. 
+For instance, in the \ruleref{tensorR} rule, the process $\send{x}{y}; P$ sends a channel $y$ along channel $x$ and continues with process $P$.
+Before sending the channel $y$, the channel $x$ has type $A \otimes B$. After sending $y$ of type $A$, the channel $x$ evolved to type $B$.
+The last message corresponds to choice type $\oplus$ and $\&$. A choice type is a collection of types distinguished by labels.
+For instance, type \texttt{bool} can be written as $\oplus\{\text{true} : \textbf{1}, \text{false} : \textbf{1}\}$,
+a choice type of two labels true and false with unit types. $\send{x}{l}$ sends a label $l$ along channel $x$.
+This can be viewed as a process that makes a choice to select label $l$ from all the possible label collection $L$.
+We add a subscript $k$ as a label to the \ruleref{orR} rule to indicate the process chooses $k$. The type of the channel evolved from
+choice type to the corresponding type of label $k$.
+$\recv{x}{(l \Rightarrow P_l)}$ provides a branching continuation that selects one branch to execute based on the label it receives.
+We write $\forall l \in L$ to indicate that the process has prepared a process for each label in $L$.
+In other words, if there is some label missing in the branching, the process will be stuck and cannot proceed.
+However, we can exploit this feature by including non-exhaustive matches in our language, which will be discussed in the later section.
+
+We know discuss the structural rules of our system. The weakening rule is represented by the channel cancellation process $\cancel{x}$.
+Although we have two different weakening rules : $\ruleref{weakenL}$ and $\ruleref{weakenR}$, we do not distinct its difference in process.
+The process $\cancel{x}$ discards the channel $x$ from the context and continues with process $P$ under the remaining context.
+The $\ruleref{identity}$ rule is represented by the process $\fwd{y}{x}$, which passes the information from channel $y$ to channel $x$.
+The cut rule spawns a child process $P$ with a newly created private channel $x$ and continues with parent process $Q$ under the remaining context.
+The split of the exception handling context and the remaining rules about exceptions are discussed in the next section.
+
+\section{Exception processes}
+We first examine how exceptions are raised and handled in common functional programming languages. 
+Below is a division function that returns the division of two numbers optionally. In other words,
+if there is no division by zero, the function returns the division of two numbers.
+Otherwise, it prints a message to console and returns none. 
+\inputminted{ocaml}{code/div.ml} 
+An important observation is sequential execution in computation.
+Whether the print statement will be executed is not determined until the division is evaluated.
+We adapt such idea in our exception handling mechanism. 
+The execution of an exception handling process requires the execution of the main process,
+and we use $\Omega$ to store the channels that communicate between the main process and the exception handling process.
+ 
+A main process $P$'s $\Omega$ is a singleton context, which means it contains at most one channel.
+If there are no channels in $\Omega$, this means process $P$ does not have any exception handling mechanism.
+In other words, if $P$ raises an exception, this will be an uncaught exception. 
+Nevertheless, if a process has more than one handling mechanism, we can always combine them into one.
+\[
+  \Omega = \cdot \mid x : \text{exn}
+\]
+The channel in $\Omega$ has type $\text{exn}$, which is defined as the following:
+\[
+  \text{exn} = \oplus\{\text{act} : \textbf{1}, \text{sil} : \textbf{1}\}
+\]
+As described before, a channel of type $\text{exn}$ sends and receives a label of act or sil. 
+Act label represents activation of the exception handling process when an exception is raised.
+Conversely, sil label represents the drop of the exception handling process when the process finished executing without any processes.
+
+With enough introduction, we can look at the structure of $\ruleref{trycatch}$. 
+It creates a channel $y$ and splits the resources to execute the main process $P$.
+Meanwhile, a new channel $x$ of type \texttt{exn} is created and assigned to $P$.
+The process \texttt{erecv} is a derived form which is defined by the following:
+\begin{align*}
+  \Gamma \vdash \text{erecv}\ x\ Q(y) :: \Delta ; \Omega \triangleq \Gamma \vdash \recv{x}{(\text{act} &\Rightarrow \recv{x}{(() \Rightarrow Q(y))} \\ 
+  \mid \text{sil} &\Rightarrow \recv{x}{(() \Rightarrow \cancel{y}; \cancel{\Gamma}; \cancel{\Delta})})} :: \Delta; \Omega
+\end{align*}
+It waits a label send through channel $x$. 
+If the label is \texttt{act}, which means an exception is raised by its main process, 
+it starts to execute the process $Q(y)$ using the remaining context and the original exception handling context.
+On the other side, if the main process executes finished without any exceptions, 
+a \texttt{sil} label will lead to a branch of cancelling all resources prepared for the exception handling.
+The exception handling context is inherited from the original process.
+
+Now we go back to the body of the division function to see how exceptions are raised.
+The division \texttt{a / b} is a partial function that will raise an exception when $b = 0$.
+The exception is characterized by the exception constructor \texttt{Failure} with a message attached to it.
+In the example above, we do not utilize the information stored in the exception. 
+We follow the same structure in our system, instead of raising an exception with value, 
+we raise a process as described in $\ruleref{raise}$. 
+$\craise{P}$ raises an exception and continue to execute with process $P$. 
+Right now, we require the exception to be caught by the exception handling process.
+This invariant is enforced by requires $\Omega$ is non-empty.
+The restriction can be relaxed, since uncaught exceptions are common in programming languages. 
+We explore this feature in the later chapter.
+
+\chapter{Runtime semantics}
+\section{Configuration}
+To formalize the runtime semantics, we can view each single process as an individual object.
+The start of the program can be viewed as a configuration with a single object.
+During the execution of the program, new processes will be spawned and adding new process object into the configuration.
+We define the configuration $\config$ in \cref{fig:config}.
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{r r r l l}
+    Configuration & $\config$ & $::=$ & $\cdot$ & empty configuration \\
+    & & $\mid$ & $\config_1, \config_2$ & join configuration \\
+    & & $\mid$ & $\procObj{\Gamma}{\Delta}{\Omega}{P}$ & process object
+   \end{tabular}
+  \caption{Syntax of configuration}
+  \label{fig:config}
+\end{figure}
+Empty configuration is an empty multiset that does not contain any process object.
+A single process object of form $\procObj{\Gamma}{\Delta}{\Omega}{P}$ represents a process $P$
+communicates along the channels in $\Gamma$ and $\Delta$ and has an exception handling context $\Omega$.
+During the transition of the program, the meta variables in the process object may change accordingly.
+Lastly, the join combines two configuration into one configuration.
+
+To avoid the situation of bad programs, where one channel receives a label message and has a unit continuation, 
+we establish the typing judgement for configuration of form $\Phi \vdash \config :: \Phi'$. The configuration $\config$
+uses channels in $\Phi$ and provides channels $\Phi'$. For instance, if a configuration $C$ uses channel $a : A$ and provides channel $b : B$,
+then $\Phi, a : A \vdash \config :: b : B, \Phi$ holds. We provide the relevant rules in \cref{fig:configtyping}.
+\begin{figure}[H]
+  \centering
+  \begin{rules}
+    \defrule[empty][config-empty]{}{
+      \Phi \vdash \cdot :: \Phi
+    }
+    \qquad
+    \defrule[join][config-join]{
+      \Phi \vdash \config_1 :: \Phi' \\ \Phi' \vdash \config_2 :: \Phi''
+    }{
+      \Phi \vdash \config_1, \config_2 :: \Phi''
+    }\\
+    \defrule[object][config-object]{}{
+      \Phi, \Gamma \vdash \procObj{\Gamma}{\Delta}{\Omega}{P} :: \Delta, \Phi
+    }
+  \end{rules}
+  \caption{Typing judgement of configuration}
+  \label{fig:configtyping}
+\end{figure}
+$\ruleref{config-empty}$ states that an empty configuration does not use any channels and provides the same channels.
+We add an arbitrary context $\Phi$ on both sides to generalize the $\ruleref{config-object}$ rule, since there may be channels that are not used by process $P$.
+$\ruleref{config-join}$ combines two configurations $\config_1$ and $\config_2$ into one configuration $\config$ by some certain order.
+This may contradict with the intuition that the configuration is an unordered set where $\config_1, \config_2$ should be as same as $\config_2, \config_1$.
+Here, we require that there exists an ordering of the configuration such that it is well-typed.
+Such ordering is not unique, apparently. Consider an example where $\config_1 = \procObj{\cdot}{a : A}{\Omega_1}{P}$ and $\config_2 = \procObj{b : B, c : C}{\cdot}{\Omega_2}{Q}$.
+We can join these two configurations in two ways: $\config = \config_1, \config_2$ and $\config = \config_2, \config_1$ where $b : B, c : C \vdash \config :: a : A$.
+Using the \ruleref{config-object}, we can find such $\Phi' = a : A, b : B, c : C$ for the first way and $\Phi' = \cdot$ for the second way.
+However, if we change $\config_2$ into $\procObj{a : A, b : B}{\cdot}{\Omega_2}{Q}$, the overall configuration $b : B \vdash \config :: \cdot$ still type checks, 
+but the ordering is unique.
+It cannot be the case that $\config = \config_2, \config_1$, and the reason for that is because $\config_1$ provides channel $a$ that is used by $\config_2$.
+By this observation, two configurations can be swapped if none of the channels provided by the first configuration are not used by the second configuration.
+
+Besides the configuration, we also need a globally defined set to store the channels that are cancelled during the execution, call it $\cancelSet$.
+The main reason why we need to keep track of this set is because the cancellation of a channel may affect the execution of other processes.
+Every channel can be viewed as a segment that has two endpoints. In the original execution, one endpoint will send a message and the other endpoint is a continuation that waits for this message.
+However, if one endpoint is cancelled, the other endpoint should also be cancelled accordingly. 
+Otherwise, the process will be stuck and cannot proceed. We call this procedure as cancellation propagation.
+
+To conclude, the state of the computation is a pair of current configuration and cancelled sets $\langle \config, \cancelSet \rangle$.
+
+\section{Recursion}
+Recursion is a very practical tool in programming. We do also want such feature in our system.
+However, the formalization of recursion has little to do with logics. We achieve such result by having a global signature $\Sigma$.
+This signature records both type and process definition. A type definition has the form $t = A$, where 
+$t$ is a type identifier and $A$ is a proposition. Process definition has the form $p (y_1, y_2, \ldots, y_m) [x_1, x_2, \ldots, x_n] = P$.
+The identification includes a process name $p$, a list of output channels $y_1, y_2, \ldots, y_m$ and a list of input channels $x_1, x_2, \ldots, x_n$.
+The process such identification represents is $P$. We use the judgement $\Sigma \vdash \Sigma' \textbf{ sig}$ to represent that
+$\Sigma'$ is a valid signature given all the declarations in $\Sigma$. We present the rules for signature in \cref{fig:sig}. 
+The judgement for well-formed type $\Sigma \vdash A \textbf{ type}$ and well-formed process $\Sigma \vdash P \textbf{ proc}$ can be defined on the structure
+of propositions and processes, respectively, and thus we omit the rules here.
+\begin{figure}[H]
+  \centering
+  \begin{rules}
+    \defrule[empty][sig-empty]{}{
+      \Sigma \vdash \cdot \textbf{ sig}
+    }
+    \qquad
+    \defrule[typedef][sig-join]{
+      \Sigma \vdash \Sigma' \textbf{ sig} \\ \Sigma \vdash A \textbf{ type}
+    }{
+      \Sigma \vdash \Sigma', t = A \textbf{ sig}
+    }\\
+    \defrule[procdef][sig-object]{
+      \Sigma \vdash \Sigma' \textbf{ sig} \\ \Sigma \vdash P(x_1,x_2,\ldots,x_n,y_1,y_2,\ldots,y_m) \textbf{ proc}
+    }{
+      \Sigma \vdash \Sigma', p (y_1, y_2, \ldots, y_m) [x_1, x_2, \ldots, x_n] = P \textbf{ sig}
+    }
+  \end{rules}
+  \caption{Judgement of well-formed signature}
+  \label{fig:sig}
+\end{figure}
+We present some examples of recursive types that will be used in future examples.
+\begin{itemize}
+  \item Natural number \texttt{nat}
+  \[
+    \texttt{nat} \triangleq \oplus\{\text{zero} : \textbf{1}, \text{zero} : \texttt{nat}\}
+  \]
+  The definition of natural number is a choice type of two labels \texttt{zero} and \texttt{succ},
+  where \texttt{zero} represents the number $0$ and \texttt{succ} represents the successor of a natural number.
+  This looks similar to the inductive type $\mu(t.1 + t)$.
+  \item List of natural numbers \texttt{list}
+  \[
+    \texttt{list} \triangleq \oplus\{\text{nil} : \textbf{1}, \text{cons} : \texttt{nat} \otimes \texttt{list}\}
+  \]
+  List of nature numbers is also a choice type of two labels \texttt{nil} and \texttt{cons}.
+  In the \texttt{cons} label, it contains multiplicative product of \texttt{nat} and \texttt{list}.
+  To ensure \texttt{list} is well-defined, we need to have a type definition for \texttt{nat} in the signature. 
+\end{itemize}
+To utilize the recursion process, we add a new process \textbf{call} to activate another process in \cref{fig:extended}.
+A process can call itself to achieve self recursion.
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{r r r l}
+    Processes & $P, Q$ & $::=$ & $\ldots$ \\
+    & & $\mid$ & $\call{p}{y_1, y_2, \ldots, y_m}{x_1, x_2, \ldots, x_n}$
+  \end{tabular}
+  \begin{rules}
+    \defrule[call][call]{
+      \Sigma \vdash p (y_1, y_2, \ldots, y_m) [x_1, x_2, \ldots, x_n] = P \textbf{ sig} \\
+      \judge{\Gamma}{P}{\Delta}{\Omega}
+    }{
+      \judge{\Gamma}{\call{p}{y_1, y_2, \ldots, y_m}{x_1, x_2, \ldots, x_n}}{\Delta}{\Omega}
+    }\\
+    \text{where } \Gamma = x_1 : A_1, x_2 : A_2, \ldots, x_n : A_n \text{ and } \Delta = y_1 : C_1, y_2 : C_2, \ldots, y_m : C_m
+  \end{rules}
+  \caption{Extended syntax and static semantics of the type system}
+  \label{fig:extended}
+\end{figure}
+The \textbf{call} process looks up the signature $\Sigma$ and finds the process defined by identifier $p$.
+There should be no future processes after the \textbf{call}, thus we require process $P$ takes all the channels in $\Gamma$ and $\Delta$.
+The exception handling context $\Omega$ is inherited from the original process. 
+\section{Execution}
+The reduction of the configuration is based on linear inference. 
+New process objects are created when a new process is spawned. 
+Correspondingly, process objects may be destroyed when the process is finished or evolves to another process.
+A reduction step is represented by $\langle \config; \cancelSet \rangle \longrightarrow \langle \config'; \cancelSet' \rangle$.
+The reduction rules only examine parts of the configuration. The untouched parts are preserved in the new configuration.
+We first present the standard reduction rule without exceptions in \cref{fig:stdreduction}.
+
+\begin{figure}[H]
+  \begin{alignat}{4}
+    \label{unit-reduction-r} \textsc{[unit-r]} & ~ 
+    \Braket{
+      \begin{array}{l}
+        \procObj{\cdot}{a : \textbf{1}}{\Omega_1}{\send{a}{()}} \\
+        \procObj{\Gamma, a : \textbf{1}}{\Delta}{\Omega_2}{\recv{a}{(() \Rightarrow P)}}
+      \end{array}
+      ; S
+    } \tag*{} & ~ \longrightarrow & ~ 
+    \Braket{
+      \begin{array}{l}
+        \procObj{\cdot}{\cdot}{\Omega_1}{\cdot} \\
+        \procObj{\Gamma}{\Delta}{\Omega_2}{P}
+      \end{array}
+      ; S
+    }
+  \end{alignat}
+  \raggedleft
+  \caption{Selected configuration reduction rules}
+  \label{fig:stdreduction}
+\end{figure}
 
 \appendix
 
