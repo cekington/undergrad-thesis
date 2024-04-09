@@ -1168,10 +1168,50 @@ We will show a few interesting cases to demonstrate how proof proceeds.
   \end{align*}
   This concludes this case of type preservation.
 \end{proof}
+Showing every reduction terminates is not possible in our system because of recursion. 
+For instance, a process \texttt{foo} can call itself such that the execution will never terminate.
+However, we are able to show that well-typed configurations will not get stuck.
+In other words, a configuration is either final, which means all process objects attempt to communicate along an external channel,
+or it can reduce to another configuration. We formalize this property in \cref{thm:progress}.
 \begin{theorem}[Deadlock Freedom]\label{thm:progress}
-  Given a state $\langle \config, \cancelSet \rangle$, then either $\config$ is final, or 
-  $\langle \config, \cancelSet \rangle \longrightarrow \langle \config', \cancelSet' \rangle$ for some $\config', \cancelSet'$.
+  Given a state $\langle \config; \cancelSet \rangle$ such that $\cdot \vdash \config :: \Phi$, then either $\config$ is final, or 
+  $\langle \config; \cancelSet \rangle \longrightarrow \langle \config'; \cancelSet' \rangle$ for some $\config', \cancelSet'$.
 \end{theorem}
+We require the configuration does not take any input channels. 
+Otherwise, the configuration may get stuck because the messages from the input channel may not be available.
+The collection of external channels is represented by $\Phi$. Such channels have only one endpoint.
+In other words, if $\config$ satisfies $\cdot \vdash \config :: \Phi$, then $\config$ is a closed configuration because it does not depend on any channels.
+\begin{proof}
+  We prove this theorem by induction on the structure of the configuration, right to left.
+  Since the typing of the configuration requires some ordering, a right to left induction provides useful induction hypothesis.
+  If $\config = \cdot$, then $\config$ is trivially final and the theorem holds.
+  Now we assume the followings: 
+  \begin{align*}
+    \config &= (\config_L, \procObj{\Gamma}{\Delta}{\Omega}{P}) \\
+    \cdot & \vdash \config_L :: (\Phi', \Gamma) \\
+    \Phi', \Gamma & \vdash \procObj{\Gamma}{\Delta}{\Omega}{P} :: (\Phi', \Delta) \\
+    \Phi & = (\Phi, \Delta) \\
+    \cdot & \vdash \config :: \Phi
+  \end{align*}
+  for a process object $\procObj{\Gamma}{\Delta}{\Omega}{P}$ and $\Phi, \Phi'$.
+  
+  Now we distinguish the cases by the structure of process $P$.
+  \begin{itemize}
+    \item [\ruleref{cut}] In this case $P = \spawn{P_1}{P_2}{x}$. By induction hypothesis,
+    we know that $\config_L$ is either final or can reduce to another configuration $\config_L'$ with some cancelled set $\cancelSet'$.
+    If it reduces to $\langle \config_L'; \cancelSet' \rangle$, then $\langle \config; \cancelSet \rangle \longrightarrow 
+    \langle (\config_L', \procObj{\Gamma}{\Delta}{\Omega}{P}); \cancelSet' \rangle$.
+    Otherwise, by reduction, we know $\langle \config; \cancelSet \rangle \longrightarrow
+    \langle (\config_L, \procObj{\Gamma_1}{a : A, \Delta_1}{\cdot}{P_1(a)}, \procObj{\Gamma_2, a : A}{\Delta_2}{\Omega}{P_2(a)}); \cancelSet \rangle$
+    with a proper split of the context.
+    \item [\ruleref{weakenL}] In this case $P = \cancel{a}; P'$ and $\Gamma = \Gamma', a : A$. 
+    For simplicity, we assume $\config_L$ is final.
+    By reduction, we know $\langle \config; \cancelSet \rangle \longrightarrow \langle (\config_L, \procObj{\Gamma'}{\Delta}{\Omega}{P'}); \cancelSet \cup \{a\} \rangle$.
+    \item [\ruleref{nothing}-exn] In this case $P = \cdot$ while $\Omega = a :$ \texttt{exn}.
+    For simplicity, we assume $\config_L$ is final.
+    By reduction, we know $\langle \config; \cancelSet \rangle \longrightarrow \langle (\config_L, \procObj{\cdot}{a : \text{exn}}{\cdot}{\send{a}{\text{sil}}; \send{a}{()}}); \cancelSet \rangle$.
+  \end{itemize}
+\end{proof}
 \chapter{Interpreter}
 \chapter{Other features}
 \section{Uncaught exception}
