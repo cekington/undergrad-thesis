@@ -13,6 +13,7 @@
 \RequirePackage[libertine]{newtxmath}
 \usepackage{microtype}
 \usepackage{cmutr}
+\usepackage{epass}
 \usepackage{minted}
 \usepackage{graphicx}
 \usepackage{tikz}
@@ -21,6 +22,7 @@
 \usepackage{stmaryrd} 
 \usepackage{braket}
 \usepackage{subcaption}
+\usepackage{hyperref}
 
 \setlrmarginsandblock{1.25in}{*}{1}
 \setulmarginsandblock{1.5in}{*}{1}
@@ -41,6 +43,8 @@
 \newcommand*{\config}[0]{\mathcal{C}}
 \newcommand*{\cancelSet}[0]{\mathcal{S}}
 
+\lstset{style=verb, language=epass, numbers=none}
+
 % Check out the memoir manual for other chapter styles.
 \chapterstyle{default}
 
@@ -54,6 +58,7 @@
 \makeoddhead{nonumbers}{}{}{{\itshape\rightmark}\qquad\thepage}
 
 \addbibresource{bibliography.bib}
+
 
 \input{infrastructure.tex}
 
@@ -730,7 +735,7 @@ We present some examples of recursive types that will be used in future examples
 \begin{itemize}
   \item Natural number \texttt{nat}
   \[
-    \texttt{nat} \triangleq \oplus\{\text{zero} : \textbf{1}, \text{zero} : \texttt{nat}\}
+    \texttt{nat} \triangleq \oplus\{\text{zero} : \textbf{1}, \text{succ} : \texttt{nat}\}
   \]
   The definition of natural number is a choice type of two labels \texttt{zero} and \texttt{succ},
   where \texttt{zero} represents the number $0$ and \texttt{succ} represents the successor of a natural number.
@@ -767,6 +772,11 @@ The \textbf{call} process looks up the signature $\Sigma$ and finds the process 
 There should be no future processes after the \textbf{call}, thus we require process $P$ takes all the channels in $\Gamma$ and $\Delta$.
 The exception handling context $\Omega$ is inherited from the original process. 
 \section{Reduction}
+In the future discussion, we distinct channels that are allocated by using $a,b,c,\ldots$ for newly created channels.
+We use $x,y,z,\ldots$ for channels variables that requires substitution by another allocated channel.
+For instance, $\spawn{P}{Q}{a}$ should not be allowed since channel $a$ should be a variable instead of an allocated channel.
+Similarly, $\cancel{x}$ is neither invalid since we cannot cancel a channel that is not allocated.
+
 The reduction of the configuration is based on linear inference. 
 New process objects are created when a new process is spawned. 
 Correspondingly, process objects may be destroyed when the process is finished or evolves to another process.
@@ -1213,11 +1223,58 @@ In other words, if $\config$ satisfies $\cdot \vdash \config :: \Phi$, then $\co
   \end{itemize}
 \end{proof}
 \chapter{Interpreter}
+To experiment with the proposed type system, we implement a simple interpreter in Ocaml. 
+We name the source language EPass, an abbreviation for exceptional message passing. We don't have a target language.
+Instead, we simulate the execution in Ocaml and make observation that outputs to the console screen.
+There are four main phases in the interpreter: parsing, elaboration, type checking, and runtime simulation.
+A complete implementation of the interpreter can be found \href{https://github.com/cekington/ePass}{here}.
+\section{Grammar} 
+We present the grammar of the EPass language in \cref{sec:grammar}. There are a few remarks about the grammar.
+\begin{itemize}
+  \item We use \texttt{type t = } $\ldots$ for type definition and \texttt{proc p} $(\ldots)\ [\ldots]$ \texttt{=} $\ldots$ for process definition.
+  \texttt{exec} $p$ executes a closed process, a process without any input channels, and prints out the observation of the external channels. 
+  \item We keep $\multimap$ as the linear implication in our language. Although we do not include it in our system, we have shown $A \multimap B$ is equivalent.
+  Thus, $A \multimap B$ is viewed as a syntax sugar that will be elaborated to $A^\bot \pare B$ during elaboration.
+  \item There is not a suitable Unicode character to represent $\pare$. We use @ to represent the multiplicative disjunction.
+  \item We modify the try-catch process such that creating a new channel is not necessary. 
+  This can be used when the main process and the exception handling process are independent with each other.
+  Therefore, $\trycatch{P}{Q}{y}$ and $\textbf{try}\ P \textbf{ catch } Q$ are both valid try-catch processes.
+  \item We distinguish identity and label by putting a ' character in front of the label. So the type \texttt{nat} in EPass looks like
+  \[
+    \texttt{nat} \triangleq \oplus\{\text{'zero} : 1 , \text{'succ} : \texttt{nat}\}
+  \]
+\end{itemize}
+As checked by Menhir, a LR$(1)$ parser generator for OCaml, there are no ambiguity in the grammar.
+So every source code that follows the grammar can be parsed into the external language properly.
+The syntax of the external language can be found in \cref{sec:el}.
+\section{Elaboration}
+During the elaboration, we transform the external language into internal language, whose syntax is in \cref{sec:il}. There are two major goals in this phase.
+\begin{itemize}
+  \item We first remove the recursive definitions for types in the external language, which means types have at most one layer.
+  This helps to simplify comparing the equality of two types. When we compare two types, we need to compare the outermost layer,
+  and, if necessary, we can always expand the type by the newly created identity.
+
+  For example, type definitions of \texttt{nat} and \texttt{list} in the external language 
+  \lstinputlisting{code/elab-before.eps}
+  will be elaborated to the internal language as
+  \lstinputlisting{code/elab-after.eps}
+  Besides type elaboration, we also remove the usage of linear application.
+  \item After the elaboration, we check the every definition is well-formed by checking $\Sigma_\text{decl} \vdash \Sigma_\text{defn}$.
+  We extract the declaration by scanning the whole program and build the definition during the elaboration.
+  Type checking errors are reported for any ill-defined processes or types. 
+  Additionally, some syntax allowed progresses that confuse the runtime semantics are also rejected.
+  For instance, executing open processes and having duplicate labels in either type definition or branching continuation are ruled out.
+\end{itemize}
 \chapter{Other features}
 \section{Uncaught exception}
 \appendix
-\chapter{Proofs}
-
+\chapter{EPass interpreter syntax} 
+\section{Grammar} \label{sec:grammar}
+\inputminted{text}{code/grammar.txt}
+\section{External language} \label{sec:el}
+\inputminted{ocaml}{code/el.ml}
+\section{Internal language} \label{sec:il}
+\inputminted{ocaml}{code/il.ml}
 \backmatter
 
 \printbibliography

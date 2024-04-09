@@ -1,0 +1,42 @@
+\usepackage{listings}
+
+\lstdefinestyle{verb}{
+  basicstyle=\ttfamily\small,
+  commentstyle=\itshape\color{red},
+  keywordstyle=[1]\color{brown},   % labels
+  keywordstyle=[2]\bfseries\color{blue},
+  keywordstyle=[3]\bfseries\color{teal},
+  keywordstyle=[4]\color{violet},
+  % identifierstyle=
+  numbers=left,
+  numberstyle=\tiny,
+  captionpos=b,
+}
+
+\lstdefinelanguage{epass}{
+  keywords=[1]{},  % for labels
+  keywords=[2]{type,proc,exec},
+  morekeywords=[3]{send,recv,fwd,call,raise,cancel,try,catch},
+  morekeywords=[4]{1, +, \&, *, -o, <-, @},
+%   otherkeywords={1, +, \&, *, -o, <-, @, :, |, ;},
+  alsoletter={', 1, +, \&, *, -o, <-, @},
+  keywordsprefix=', 
+  sensitive=true,
+  comment=[l]\%,
+  morecomment=[n]{(*}{*)},
+  % morecomment=[l]\#,  % for compiler directives
+}
+
+% in the individual files, if desired
+% \lstset{style=verb,language=mpass}
+
+% \begin{lstlisting}[language=mpass,style=verb,
+%   caption={<caption text>},label=lst:<name>]
+%   ... lambda code ...
+% \end{lstlisting}
+%
+% \lstinline{...code...}
+%
+% \begin{lstlisting}[language=mpass,style=verb,numbers=none]
+%   ...
+% \end{lstlisting}
