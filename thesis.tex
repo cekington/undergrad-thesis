@@ -20,6 +20,7 @@
 \usepackage{mathpartir}
 \usepackage{stmaryrd} 
 \usepackage{braket}
+\usepackage{subcaption}
 
 \setlrmarginsandblock{1.25in}{*}{1}
 \setulmarginsandblock{1.5in}{*}{1}
@@ -404,7 +405,6 @@ We first present the syntax of the processes in \cref{fig:processes}.
     Messages & $M$ & $::=$ & $()$ \\
     & & $\mid$ & $l$ \\
     & & $\mid$ & $x$ \\  
-    % Love message & $L$ & $::=$ & \textbf{void} \\
     Continuations & $K$ & $::=$ & $(() \Rightarrow P)$ \\    
     & & $\mid$ & $(l \Rightarrow P_l)_{l \in L}$ \\
     & & $\mid$ & $(x \Rightarrow P(x))$ \\
@@ -415,7 +415,8 @@ We first present the syntax of the processes in \cref{fig:processes}.
     & & $\mid$ & $\spawn{P}{Q}{x}$ \\
     & & $\mid$ & $\craise{M}$ \\
     & & $\mid$ & $\trycatch{P}{Q}{x}$ \\
-    & & $\mid$ & $P; Q$ \\
+    & & $\mid$ & $\cdot$ \\
+    & & $\mid$ & $P; Q$
    \end{tabular}
   \caption{Syntax of processes}
   \label{fig:processes}
@@ -498,7 +499,12 @@ Such rules are also called the static semantics of the type system.
     \\
     \defrule[$\text{cut}_A$][cut]{\judge{\Gamma_1}{P(x)}{x : A, \Delta_1}{\cdot} \\ \judge{\Gamma_2, x : A}{Q(x)}{\Delta_2}{\Omega}}{
       \judge{\Gamma_1, \Gamma_2}{\spawn{P}{Q}{x}}{\Delta_1, \Delta_2}{\Omega}
-    }\\
+    }
+    \qquad
+    \defrule[empty][nothing]{}{
+      \judge{\cdot}{\cdot}{\cdot}{\Omega}
+    }
+    \\
     \defrule[raise][raise]{\judge{\Gamma}{P}{\Delta}{\cdot}}{
       \judge{\Gamma}{\craise{P}}{\Delta}{\Omega}
     }\\
@@ -671,36 +677,53 @@ However, if one endpoint is cancelled, the other endpoint should also be cancell
 Otherwise, the process will be stuck and cannot proceed. We call this procedure as cancellation propagation.
 
 To conclude, the state of the computation is a pair of current configuration and cancelled sets $\langle \config, \cancelSet \rangle$.
-
 \section{Recursion}
 Recursion is a very practical tool in programming. We do also want such feature in our system.
-However, the formalization of recursion has little to do with logics. We achieve such result by having a global signature $\Sigma$.
-This signature records both type and process definition. A type definition has the form $t = A$, where 
+However, the formalization of recursion has little to do with logics. We achieve such equirecursive by having a signature $\Sigma_{\text{decl}}$ and a structure $\Sigma_{\text{defn}}$,
+whose syntax is defined in \cref{fig:syntaxsig}.
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{r r l}
+    $\Sigma_{\text{decl}}$ & $::=$ & $\cdot$ \\
+    & $\mid$ & $t : A$ \\
+    & $\mid$ & $p : (\Gamma, \Delta)$ \\
+    & $\mid$ & $\Sigma_{\text{decl}1}, \Sigma_{\text{decl}2}$ \\  
+    $\Sigma_{\text{defn}}$ & $::=$ & $\cdot$ \\
+    & $\mid$ & $t = A$ \\
+    & $\mid$ & $p (y_1, y_2, \ldots, y_m)[x_1, x_2, \ldots, x_n]= P$ \\
+    & $\mid$ & $\Sigma_{\text{defn}1}, \Sigma_{\text{defn}2}$
+    \end{tabular}
+  \caption{Syntax of signature and structure}
+  \label{fig:syntaxsig}
+\end{figure}
+A signature is a set of type declaration $t : A$ and process declaration $p : (\Gamma, \Delta)$.
+Such signature can be determined when scanning through the whole program.
+We want to ensure that all the definition in the program is well-defined based on the declarations.
+This structure records both type and process definition. A type definition has the form $t = A$, where 
 $t$ is a type identifier and $A$ is a proposition. Process definition has the form $p (y_1, y_2, \ldots, y_m) [x_1, x_2, \ldots, x_n] = P$.
 The identification includes a process name $p$, a list of output channels $y_1, y_2, \ldots, y_m$ and a list of input channels $x_1, x_2, \ldots, x_n$.
-The process such identification represents is $P$. We use the judgement $\Sigma \vdash \Sigma' \textbf{ sig}$ to represent that
-$\Sigma'$ is a valid signature given all the declarations in $\Sigma$. We present the rules for signature in \cref{fig:sig}. 
-The judgement for well-formed type $\Sigma \vdash A \textbf{ type}$ and well-formed process $\Sigma \vdash P \textbf{ proc}$ can be defined on the structure
-of propositions and processes, respectively, and thus we omit the rules here.
+The process such identification represents is $P$. We use the judgement $\Sigma_{\text{decl}} \vdash \Sigma_{\text{defn}} \textbf{ struct}$ to represent that
+$\Sigma_{\text{defn}}$ is a valid structure given all the declarations in $\Sigma_{\text{decl}}$. We present the rules for signature in \cref{fig:sig}. 
+The judgement for well-formed type $\Sigma_{\text{decl}} \vdash A \textbf{ type}$ and well-formed process $\Sigma_{\text{decl}} \vdash P \textbf{ proc}$ can be defined by looking at the signature, and thus we omit the rules here.
 \begin{figure}[H]
   \centering
   \begin{rules}
     \defrule[empty][sig-empty]{}{
-      \Sigma \vdash \cdot \textbf{ sig}
+      \Sigma_{\text{decl}} \vdash \cdot \textbf{ struct}
     }
     \qquad
     \defrule[typedef][sig-join]{
-      \Sigma \vdash \Sigma' \textbf{ sig} \\ \Sigma \vdash A \textbf{ type}
+      \Sigma_{\text{decl}} \vdash \Sigma_{\text{defn}} \textbf{ struct} \\ \Sigma_{\text{decl}} \vdash A \textbf{ type}
     }{
-      \Sigma \vdash \Sigma', t = A \textbf{ sig}
+      \Sigma_{\text{decl}} \vdash \Sigma_{\text{defn}}, t = A \textbf{ struct}
     }\\
     \defrule[procdef][sig-object]{
-      \Sigma \vdash \Sigma' \textbf{ sig} \\ \Sigma \vdash P(x_1,x_2,\ldots,x_n,y_1,y_2,\ldots,y_m) \textbf{ proc}
+      \Sigma_{\text{decl}} \vdash \Sigma_{\text{defn}} \textbf{ struct} \\ \Sigma_{\text{decl}} \vdash P(x_1,x_2,\ldots,x_n,y_1,y_2,\ldots,y_m) \textbf{ proc}
     }{
-      \Sigma \vdash \Sigma', p (y_1, y_2, \ldots, y_m) [x_1, x_2, \ldots, x_n] = P \textbf{ sig}
+      \Sigma_{\text{decl}} \vdash \Sigma_{\text{defn}}, p (y_1, y_2, \ldots, y_m) [x_1, x_2, \ldots, x_n] = P \textbf{ struct}
     }
   \end{rules}
-  \caption{Judgement of well-formed signature}
+  \caption{Judgement of well-formed structure}
   \label{fig:sig}
 \end{figure}
 We present some examples of recursive types that will be used in future examples.
@@ -730,7 +753,7 @@ A process can call itself to achieve self recursion.
   \end{tabular}
   \begin{rules}
     \defrule[call][call]{
-      \Sigma \vdash p (y_1, y_2, \ldots, y_m) [x_1, x_2, \ldots, x_n] = P \textbf{ sig} \\
+      \Sigma_{\text{decl}} \vdash p (y_1, y_2, \ldots, y_m) [x_1, x_2, \ldots, x_n] = P \textbf{ struct} \\
       \judge{\Gamma}{P}{\Delta}{\Omega}
     }{
       \judge{\Gamma}{\call{p}{y_1, y_2, \ldots, y_m}{x_1, x_2, \ldots, x_n}}{\Delta}{\Omega}
@@ -743,7 +766,7 @@ A process can call itself to achieve self recursion.
 The \textbf{call} process looks up the signature $\Sigma$ and finds the process defined by identifier $p$.
 There should be no future processes after the \textbf{call}, thus we require process $P$ takes all the channels in $\Gamma$ and $\Delta$.
 The exception handling context $\Omega$ is inherited from the original process. 
-\section{Execution}
+\section{Reduction}
 The reduction of the configuration is based on linear inference. 
 New process objects are created when a new process is spawned. 
 Correspondingly, process objects may be destroyed when the process is finished or evolves to another process.
@@ -751,6 +774,26 @@ A reduction step is represented by $\langle \config; \cancelSet \rangle \longrig
 The reduction rules only examine parts of the configuration. The untouched parts are preserved in the new configuration.
 We first present the standard reduction rule without exceptions in \cref{fig:stdreduction}.
 
+Most of the standard rules represent message reduction. For instance,
+in \stepref{label-reduction-r}{label-r}, one process sends a label $k$ through channel $a$ 
+and in another process it waits a label from $a$ and pass it to a branching continuation.
+Such two processes can make progress simultaneously. As the first process continue to execute the remaining process $P$,
+the second process chooses process $P_k$ to execute. 
+By the duality of the propositions, each reduction has two versions of rules, one for the right rule and one for the left rule.
+
+In the \stepref{forward}{linking} rule, the process $\fwd{c}{a}$ passes the information from channel $a$ to channel $c$.
+We achieve such effect by replacing all the usage of channel $a$ by channel $c$ in the continuation process.
+Since the invariant that every channel has two endpoints holds, we know there is only one such process where we need to do the substitution.
+The \stepref{spawn}{spawn} rule splits the original object into two process objects.
+The first object contains the new process $P$ and the second object contains the original process $Q$.
+A new channel $a$ is created and put into the relevant context. We require that the channel $a$ is fresh globally to avoid naming conflicts.
+Moreover, the contexts are split based on the meta variables in each process. 
+According to the static rules, there must be a valid splitting of the context that maintains the typing of the configuration.
+In the \stepref{call}{call} rule, we assume the signature is well-formed, thus there exists a process declaration for $p$.
+We find such definition $p (y_1, y_2, \ldots, y_m) [x_1, x_2, \ldots, x_n] = P$ and execute the process $P$.
+We can drop a process object when the process is finished. 
+A process is finished if all the channels in the contexts are used and there is no remaining processes,
+which is formalized by the \stepref{finish}{end} rule.
 \begin{figure}[H]
   \begin{alignat}{4}
     \label{unit-reduction-r} \textsc{[unit-r]} & ~ 
@@ -759,23 +802,380 @@ We first present the standard reduction rule without exceptions in \cref{fig:std
         \procObj{\cdot}{a : \textbf{1}}{\Omega_1}{\send{a}{()}} \\
         \procObj{\Gamma, a : \textbf{1}}{\Delta}{\Omega_2}{\recv{a}{(() \Rightarrow P)}}
       \end{array}
-      ; S
-    } \tag*{} & ~ \longrightarrow & ~ 
+      ; \cancelSet
+    } & ~ \longrightarrow & ~ 
     \Braket{
       \begin{array}{l}
         \procObj{\cdot}{\cdot}{\Omega_1}{\cdot} \\
         \procObj{\Gamma}{\Delta}{\Omega_2}{P}
       \end{array}
-      ; S
-    }
+      ; \cancelSet
+    } \tag*{} \\
+    \label{unit-reduction-l} \textsc{[unit-l]} & ~ 
+    \Braket{
+      \begin{array}{l}
+        \procObj{a : \boldsymbol{\bot}}{\cdot}{\Omega_1}{\send{a}{()}} \\
+        \procObj{\Gamma}{a : \boldsymbol{\bot}, \Delta}{\Omega_2}{\recv{a}{(() \Rightarrow P)}}
+      \end{array}
+      ; \cancelSet
+    } & ~ \longrightarrow & ~ 
+    \Braket{
+      \begin{array}{l}
+        \procObj{\cdot}{\cdot}{\Omega_1}{\cdot} \\
+        \procObj{\Gamma}{\Delta}{\Omega_2}{P}
+      \end{array}
+      ; \cancelSet
+    } \tag*{} \\
+    \label{channel-reduction-r} \textsc{[channel-r]} & ~ 
+    \Braket{
+      \begin{array}{l}
+        \procObj{\Gamma_1, a : A}{c : A\otimes B, \Delta_1}{\Omega_1}{\send{c}{a}; P} \\
+        \procObj{\Gamma_2, c : A \otimes B}{\Delta_2}{\Omega_2}{\recv{c}{(x \Rightarrow P(x))}}
+      \end{array}
+      ; \cancelSet
+    } & ~ \longrightarrow & ~ 
+    \Braket{
+      \begin{array}{l}
+        \procObj{\Gamma_1}{c : B, \Delta_1}{\Omega_1}{P} \\
+        \procObj{\Gamma_2, c : B}{\Delta_2}{\Omega_2}{P(a)}
+      \end{array}
+      ; \cancelSet 
+    } \tag*{} \\
+    \label{channel-reduction-l} \textsc{[channel-l]} & ~ 
+      \Braket{
+        \begin{array}{l}
+          \procObj{\Gamma_1, c : A \pare B}{a : A, \Delta_1}{\Omega_1}{\send{c}{a}; P} \\
+          \procObj{\Gamma_2}{c : A \pare B, \Delta_2}{\Omega_2}{\recv{c}{(x \Rightarrow P(x))}}
+        \end{array}
+        ; \cancelSet
+      } & ~ \longrightarrow & ~ 
+      \Braket{
+        \begin{array}{l}
+          \procObj{\Gamma_1}{c : B, \Delta_1}{\Omega_1}{P} \\
+          \procObj{\Gamma_2, c : B}{\Delta_2}{\Omega_2}{P(a)}
+        \end{array}
+        ; S\cancelSet
+    } \tag*{} \\
+    \label{label-reduction-r} \textsc{[label-r]} & ~ 
+      \Braket{
+        \begin{array}{l}
+          \procObj{\Gamma_1}{a : \oplus\{l : A_l\}_{l \in L}, \Delta_1}{\Omega_1}{\send{a}{k}; P} \\
+          \procObj{\Gamma_2, a : \oplus\{l : A_l\}_{l \in L}}{\Delta_2}{\Omega_2}{\recv{a}{(l \Rightarrow P_l)_{l \in L}}}
+        \end{array}
+        ; \cancelSet
+      } & ~ \longrightarrow & ~ 
+      \Braket{
+        \begin{array}{l}
+          \procObj{\Gamma_1}{a : A_k, \Delta_1}{\Omega_1}{P} \\
+          \procObj{\Gamma_2, a : A_k}{\Delta_2}{\Omega_2}{P_k}
+        \end{array}
+        ; \cancelSet
+    } \tag*{} \\
+    \label{label-reduction-l} \textsc{[label-l]} & ~ 
+      \Braket{
+        \begin{array}{l}
+          \procObj{\Gamma_1, a : \&\{l : A_l\}_{l \in L}}{\Delta_1}{\Omega_1}{\send{a}{k}; P} \\
+          \procObj{\Gamma_2}{a : \&\{l : A_l\}_{l \in L}, \Delta_2}{\Omega_2}{\recv{a}{(l \Rightarrow P_l)_{l \in L}}}
+        \end{array}
+        ; \cancelSet
+      } & ~ \longrightarrow & ~ 
+      \Braket{
+        \begin{array}{l}
+          \procObj{\Gamma_1, a : A_k}{\Delta_1}{\Omega_1}{P} \\
+          \procObj{\Gamma_2}{a : A_k, \Delta_2}{\Omega_2}{P_k}
+        \end{array}
+        ; \cancelSet
+    } \tag*{} \\
+    \label{forward} \textsc{[linking]} & ~ 
+      \Braket{
+        \begin{array}{l}
+          \procObj{a : A}{c : A}{\Omega_1}{\fwd{c}{a}} \\
+          \procObj{\Gamma}{a : A, \Delta}{\Omega_2}{P(a)}
+        \end{array}
+        ; \cancelSet
+      } & ~ \longrightarrow & ~ 
+      \Braket{
+        \begin{array}{l}
+          \procObj{\cdot}{\cdot}{\Omega_1}{\cdot} \\
+          \procObj{\Gamma}{c : A, \Delta}{\Omega_2}{P(c)}
+        \end{array}
+        ; \cancelSet
+    } \tag*{} \\
+    \label{spawn} \textsc{[spawn]} & ~ 
+      \Braket{
+        \begin{array}{l}
+          \procObj{\Gamma_1, \Gamma_2}{\Delta_1, \Delta_2}{\Omega}{\spawn{P}{Q}{x}}
+        \end{array}
+        ; \cancelSet
+      } & ~ \longrightarrow & ~ 
+      \Braket{
+        \begin{array}{l}
+          \procObj{\Gamma_1}{a : A, \Delta_1}{\cdot}{P(a)} \\
+          \procObj{\Gamma_2, a : A}{\Delta_2}{\Omega}{Q(a)}
+        \end{array}
+        ; \cancelSet
+    } \tag*{} \\
+    \label{call} \textsc{[call]} & ~ 
+      \Braket{
+        \begin{array}{l}
+          \procObj{\Gamma}{\Delta}{\Omega}{\call{p}{y_1, y_2, \ldots, y_m}{x_1, x_2, \ldots, x_n}}
+        \end{array}
+        ; \cancelSet
+      } & ~ \longrightarrow & ~ 
+      \Braket{
+        \begin{array}{l}
+          \procObj{\Gamma}{\Delta}{\Omega}{P}
+        \end{array}
+        ; \cancelSet
+    } \tag*{} \\
+    \label{finish} \textsc{[end]} & ~ 
+      \Braket{
+        \begin{array}{l}
+          \procObj{\cdot}{\cdot}{\cdot}{\cdot}
+        \end{array}
+        ; \cancelSet
+      } & ~ \longrightarrow & ~ 
+      \Braket{
+        \begin{array}{l}
+          \cdot
+        \end{array}
+        ; \cancelSet
+    } \tag*{}
   \end{alignat}
   \raggedleft
-  \caption{Selected configuration reduction rules}
+  \caption{Standard reductions of configuration}
   \label{fig:stdreduction}
 \end{figure}
-
+Now we examine the reduction rules in channel cancellation as listed in \cref{fig:cancelreduction}.
+The cancellation process drops a channel from the context and adds it to the cancellation set.
+We have two different rules for the right and left cancellation for the channel $a$ in the context $\Gamma$ and $\Delta$, respectively.
+The channel propagation rule states that if a channel $a$ is cancelled, then the process that involves the communication of $a$ should also be cancelled.
+Cancelling a process is achieved by replacing the process with a process that cancels all the channels in the context. 
+\begin{figure}[H]
+  \begin{alignat}{4}
+    \label{cancelR} \textsc{[cancel-r]} & ~ 
+    \Braket{
+      \begin{array}{l}
+        \procObj{\Gamma}{a : A, \Delta}{\Omega}{\cancel{a}; P}
+      \end{array}
+      ; \cancelSet
+    } & ~ \longrightarrow & ~ 
+    \Braket{
+      \begin{array}{l}
+        \procObj{\Gamma}{\Delta}{\Omega}{P}
+      \end{array}
+      ; \cancelSet \cup \{a\}
+    } \tag*{} \\
+    \label{cancelL} \textsc{[cancel-l]} & ~ 
+    \Braket{
+      \begin{array}{l}
+        \procObj{\Gamma, a : A}{\Delta}{\Omega}{\cancel{a}; P}
+      \end{array}
+      ; \cancelSet
+    } & ~ \longrightarrow & ~ 
+    \Braket{
+      \begin{array}{l}
+        \procObj{\Gamma}{\Delta}{\Omega}{P}
+      \end{array}
+      ; \cancelSet \cup \{a\}
+    } \tag*{} \\
+    \label{cancel-prop-r} \textsc{[cancel-prop-r]} & ~ 
+    \Braket{
+      \begin{array}{l}
+        \procObj{\Gamma}{a : A, \Delta}{\Omega}{P(a)}
+      \end{array}
+      ; \cancelSet \cup \{a\}
+    } & ~ \longrightarrow & ~ 
+    \Braket{
+      \begin{array}{l}
+        \procObj{\Gamma}{\Delta}{\Omega}{\cancel{\Gamma}; \cancel{\Delta}}
+      \end{array}
+      ; \cancelSet \cup \{a\}
+    } \tag*{} \\
+    \label{cancel-prop-l} \textsc{[cancel-prop-l]} & ~ 
+    \Braket{
+      \begin{array}{l}
+        \procObj{\Gamma, a : A}{\Delta}{\Omega}{P(a)}
+      \end{array}
+      ; \cancelSet \cup \{a\}
+    } & ~ \longrightarrow & ~ 
+    \Braket{
+      \begin{array}{l}
+        \procObj{\Gamma}{\Delta}{\Omega}{\cancel{\Gamma}; \cancel{\Delta}}
+      \end{array}
+      ; \cancelSet \cup \{a\}
+    } \tag*{}
+  \end{alignat}
+  \raggedleft
+  \caption{Cancellation reductions of configuration}
+  \label{fig:cancelreduction}
+\end{figure}
+Lastly we look at the exception reductions in \cref{fig:exnreduction}. The \stepref{try-catch}{try-catch} rule 
+spawns two processes, very similar to \stepref{spawn}{spawn}.
+Besides, it creates another channel $a$ of type \texttt{exn} and works as the exception handling context for $P$.
+The exception handling process $Q$ uses the channel $a$ to wait for exception activation and 
+the channel $c$ to communicate with the process $P$. When a process raises an exception, 
+we activate the exception handling by creating a new process object that sends a label \texttt{act} through channel $a$.
+Similarly, when a process finishes without any exceptions and there is an exception handling channel, then
+we send a label \texttt{sil} through channel $a$ to drop the exception handling process.
+\begin{figure}[H]
+  \begin{alignat}{4}
+    \label{try-catch} \textsc{[try-catch]} & ~ 
+    \Braket{
+      \begin{array}{l}
+        \procObj{\Gamma}{\Delta}{\Omega}{\trycatch{P}{Q}{y}}
+      \end{array}
+      ; \cancelSet
+    } & ~ \longrightarrow & ~ 
+    \Braket{
+      \begin{array}{l}
+        \procObj{\Gamma_1}{\Delta_1, c : A}{a : \text{exn}}{P(c)} \\
+        \procObj{\Gamma_2, a : \text{exn}, c : A}{\Delta_2}{\Omega}{\text{erecv}\ a\ Q(c)}
+      \end{array}
+      ; \cancelSet
+    } \tag*{} \\
+    \label{activation} \textsc{[activate]} & ~ 
+    \Braket{
+      \begin{array}{l}
+        \procObj{\Gamma}{\Delta}{a : \text{exn}}{\craise{P}}
+      \end{array}
+      ; \cancelSet
+    } & ~ \longrightarrow & ~ 
+    \Braket{
+      \begin{array}{l}
+        \procObj{\Gamma}{\Delta}{\cdot}{P} \\
+        \procObj{\cdot}{a : \text{exn}}{\cdot}{\send{a}{\text{act}}; \send{a}{()}}
+      \end{array}
+      ; \cancelSet
+    } \tag*{} \\
+    \label{silence} \textsc{[silent]} & ~ 
+    \Braket{
+      \begin{array}{l}
+        \procObj{\cdot}{\cdot}{a : \text{exn}}{\cdot}
+      \end{array}
+      ; \cancelSet
+    } & ~ \longrightarrow & ~ 
+    \Braket{
+      \begin{array}{l}
+        \procObj{\cdot}{a : \text{exn}}{\cdot}{\send{a}{\text{sil}}; \send{a}{()}}
+      \end{array}
+      ; \cancelSet
+    } \tag*{}
+  \end{alignat}
+  \raggedleft
+  \caption{Exception reductions of configuration}
+  \label{fig:exnreduction}
+\end{figure}
+\section{Safety theorems}
+To ensure the safety of the system, we first need to show the typing of the configuration is preserved as the computation proceeds.
+Such property is stated in \cref{thm:preservation}.
+\begin{theorem}[Session Fidelity]\label{thm:preservation}
+  Given a state $\langle \config, \cancelSet \rangle$, if $\Phi \vdash \config :: \Phi'$ for some $\Phi, \Phi'$
+  and $\langle \config, \cancelSet \rangle \longrightarrow \langle \config', \cancelSet' \rangle$,
+  then $\Phi \vdash \config' :: \Phi'$.
+\end{theorem}
+The proof of the theorem is casing over the forms of reduction. 
+We will show a few interesting cases to demonstrate how proof proceeds.
+\begin{proof}
+  We induct on the forms of reduction.
+  \begin{itemize}
+    \item [\stepref{spawn}{spawn}] In this case, $\config = (\config_L, \procObj{\Gamma}{\Delta}{\Omega}{\spawn{P}{Q}{x}}, \config_R)$ for some $\config_L$ and $\config_R$. 
+    Moreover, we assume the following typing judgements hold.
+    \begin{align*}
+      \Phi & \vdash \config_L :: \Phi_L \\
+      \Phi_L & \vdash \procObj{\Gamma}{\Delta}{\Omega}{\spawn{P}{Q}{x}} :: \Phi_R\\
+      \Phi_R & \vdash \config_R :: \Phi'
+    \end{align*}
+    We can split the context $\Gamma$ and $\Delta$ into $\Gamma_1, \Gamma_2$ and $\Delta_1, \Delta_2$ based on the meta variables in $P$ and $Q$.
+    By the reduction rule, we know
+    \begin{align*}
+      \config' &= \config_L, \procObj{\Gamma_1}{a : A, \Delta}{\cdot}{P(a)}, \procObj{\Gamma_2, a : A}{\Delta_2}{\Omega}{Q(a)}, \config_R \\
+      \cancelSet' &= \cancelSet
+    \end{align*}
+    where $a$ is a globally fresh channel.
+    To build the typing judgement for the new state, we apply inversion to the typing 
+    \[
+      \Phi_L \vdash \procObj{\Gamma}{\Delta}{\Omega}{\spawn{P}{Q}{x}} :: \Phi_R
+    \]
+    We find that for some $\Phi_L'$ and $A$, using the new channel $a$, we must have
+    \begin{align*}
+      \Phi_L &= (\Phi_L', \Gamma_1, \Gamma_2) \\
+      \Gamma_1 & \vdash P(a) :: \Delta_1, a : A; \cdot \\
+      \Gamma_2, a : A & \vdash Q(a) :: \Delta_2; \Omega \\
+      \Phi_R &= (\Phi_L', \Delta_1, \Delta_2)
+    \end{align*}
+    Now we can construct a typing derivation for $\config'$
+    \begin{align*}
+      \Phi & \vdash \config_L :: \Phi_L \\
+      \Phi_L &= (\Phi_L', \Gamma_1, \Gamma_2) \\
+      \Phi_L', \Gamma_1, \Gamma_2 & \vdash \procObj{\Gamma_1}{a : A, \Delta}{\cdot}{P(a)} :: (\Phi_L', \Gamma_2, \Delta_1, a : A) \\
+      \Phi_L', \Gamma_2, \Delta_1, a : A & \vdash \procObj{\Gamma_2, a : A}{\Delta_2}{\Omega}{Q(a)} :: (\Phi_L', \Delta_1, \Delta_2) \\
+      \Phi_R &= (\Phi_L', \Delta_1, \Delta_2) \\
+      \Phi_L & \vdash \config_R :: \Phi'
+    \end{align*}
+    This concludes this case of type preservation.
+  \item [\stepref{cancelL}{cancel-l}] In this case, $\config = (\config_L, \procObj{\Gamma, a : A}{\Delta}{\Omega}{\cancel{a}; P}, \config_R)$.
+    We assume the following typing judgements hold.
+    \begin{align*}
+      \Phi & \vdash \config_L :: \Phi_L \\
+      \Phi_L & \vdash \procObj{\Gamma, a : A}{\Delta}{\Omega}{\cancel{a}; P} :: \Phi_R \\
+      \Phi_R & \vdash \config_R :: \Phi'
+    \end{align*}
+    By the reduction rule, we know
+    \begin{align*}
+      \config' &= \config_L, \procObj{\Gamma}{\Delta}{\Omega}{P}, \config_R \\
+      \cancelSet' &= \cancelSet \cup \{a\}
+    \end{align*}
+    We can apply inversion to the typing judgement
+    \[
+      \Phi_L \vdash \procObj{\Gamma, a : A}{\Delta}{\Omega}{\cancel{a}; P} :: \Phi_R
+    \]
+    to find that for some $\Phi_L'$, we must have
+    \begin{align*}
+      \Phi_L & = (\Phi_L', \Gamma) \\
+      \Gamma & \vdash P :: \Delta; \Omega \\
+      \Phi_R & = (\Phi_L', \Delta)
+    \end{align*}
+    Now we can construct a typing derivation for $\config'$
+    \begin{align*}
+      \Phi & \vdash \config_L :: \Phi_L \\
+      \Phi_L & = (\Phi_L', \Gamma) \\
+      \Phi_L', \Gamma & \vdash \procObj{\Gamma}{\Delta}{\Omega}{P} :: (\Phi_L', \Delta) \\
+      \Phi_R & = (\Phi_L', \Delta) \\
+      \Phi_R & \vdash \config_R :: \Phi'
+    \end{align*}
+    This concludes this case of type preservation.
+  \end{itemize}
+\item [\stepref{silence}{silent}] In this case, $\config = (\config_L, \procObj{\cdot}{\cdot}{a : \text{exn}}{\cdot}, \config_R)$.
+  We assume the following typing judgements hold.
+  \begin{align*}
+    \Phi & \vdash \config_L :: \Phi_L \\
+    \Phi_L & \vdash \procObj{\cdot}{\cdot}{a : \text{exn}}{\cdot} :: \Phi_R \\
+    \Phi_R & \vdash \config_R :: \Phi'
+  \end{align*}
+  Applying the inversion, we must have $\Phi_R = \Phi_L$. By the reduction rule, we know
+  \begin{align*}
+    \config' &= \config_L, \procObj{\cdot}{a : \text{exn}}{\cdot}{\send{a}{\text{sil}}; \send{a}{()}}, \config_R \\
+    \cancelSet' &= \cancelSet
+  \end{align*}
+  Since channel $a$ has type \texttt{exn}, we can safely omit the explicit usage of $a : \text{exn}$ and 
+  construct a typing derivation for $\config'$ as
+  \begin{align*}
+    \Phi & \vdash \config_L :: \Phi_L \\
+    \Phi_L & \vdash \procObj{\cdot}{a : \text{exn}}{\cdot}{\send{a}{\text{sil}}; \send{a}{()}} :: \Phi_L \\
+    \Phi_R & = \Phi_L \\
+    \Phi_R & \vdash \config_R :: \Phi'
+  \end{align*}
+  This concludes this case of type preservation.
+\end{proof}
+\begin{theorem}[Deadlock Freedom]\label{thm:progress}
+  Given a state $\langle \config, \cancelSet \rangle$, then either $\config$ is final, or 
+  $\langle \config, \cancelSet \rangle \longrightarrow \langle \config', \cancelSet' \rangle$ for some $\config', \cancelSet'$.
+\end{theorem}
+\chapter{Interpreter}
+\chapter{Other features}
+\section{Uncaught exception}
 \appendix
-
 \chapter{Proofs}
 
 \backmatter
