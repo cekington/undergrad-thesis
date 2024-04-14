@@ -1,0 +1,17 @@
+proc subtract (n : nat) [n1 : nat, n2 : nat] =
+  recv n1 (
+    'zero => recv n1 (() =>
+      recv n2 (
+        'zero => recv n2 (() => send n 'zero; send n ())
+      | 'succ => raise (cancel n; cancel n2)
+      )
+    )
+  | 'succ => recv n2 (
+      'zero => recv n2 (() => send n 'succ; fwd n n1)
+    | 'succ => call subtract (n) [n1, n2]
+    )
+  )
+
+proc wrap_subtract (n : nat, n_exn : nat) [n1 : nat, n2 : nat] =
+  try call subtract (n) [n1, n2]
+  catch send n_exn 'zero; send n_exn ()

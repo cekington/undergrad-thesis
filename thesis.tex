@@ -1233,8 +1233,8 @@ We present the grammar of the EPass language in \cref{sec:grammar}. There are a 
 \begin{itemize}
   \item We use \texttt{type t = } $\ldots$ for type definition and \texttt{proc p} $(\ldots)\ [\ldots]$ \texttt{=} $\ldots$ for process definition.
   \texttt{exec} $p$ executes a closed process, a process without any input channels, and prints out the observation of the external channels. 
-  \item We keep $\multimap$ as the linear implication in our language. Although we do not include it in our system, we have shown $A \multimap B$ is equivalent.
-  Thus, $A \multimap B$ is viewed as a syntax sugar that will be elaborated to $A^\bot \pare B$ during elaboration.
+  \item We keep $\multimap$ as the linear implication in our language. Although we do not include it in our system, we have shown $A \multimap B$ can be derived in our system.
+  Thus, $A \multimap B$ is viewed as a syntax sugar that is elaborated to $A^\bot \pare B$ during elaboration.
   \item There is not a suitable Unicode character to represent $\pare$. We use @ to represent the multiplicative disjunction.
   \item We modify the try-catch process such that creating a new channel is not necessary. 
   This can be used when the main process and the exception handling process are independent with each other.
@@ -1258,17 +1258,87 @@ During the elaboration, we transform the external language into internal languag
   \lstinputlisting{code/elab-before.eps}
   will be elaborated to the internal language as
   \lstinputlisting{code/elab-after.eps}
-  Besides type elaboration, we also remove the usage of linear application.
+  Besides type elaboration, we also remove the usage of linear application and make distinction between allocated channels and channel variables.
+  Before executing any processes, all the channels should be variables.
   \item After the elaboration, we check the every definition is well-formed by checking $\Sigma_\text{decl} \vdash \Sigma_\text{defn}$.
   We extract the declaration by scanning the whole program and build the definition during the elaboration.
   Type checking errors are reported for any ill-defined processes or types. 
   Additionally, some syntax allowed progresses that confuse the runtime semantics are also rejected.
   For instance, executing open processes and having duplicate labels in either type definition or branching continuation are ruled out.
 \end{itemize}
+\section{Runtime simulation}
+The type checking phase for the interpreter follows the static semantics described in \cref{fig:static}.
+We do not have type inference for channels, since the grammar enforces type annotation for every channel variable.
+The runtime simulation basically follows the reduction rules we discussed before. However, we would like to make a few remarks on how observation of external channels are made during the reduction.
+
+First, we will demonstrate the reason why we need to make observations. Consider the following example of two processes $P_1$ and $P_2$ where $a$ is an external channel and $P$ is some process.
+\begin{align*}
+  P_1 & \triangleq \send{a}{k}; \send{b}{()}\\
+  P_2 & \triangleq \recv{b}{(() \Rightarrow P)}
+\end{align*}
+According to the definition of external channels, channel $a$ has only one endpoint which happens in process $P_1$. 
+Therefore, this configuration cannot be reduced further, because the interaction between $P_1$ and $P_2$ by channel $b$ is blocked by the channel $a$.
+If we consider this as a final configuration in runtime, that is not appropriate because process $P$ may other effects that are not observed.
+Thus, we need to make observations when the reduction of the configuration get stuck. 
+In other words, the final configuration in the implementation must be an empty configuration.
+
+We illustrate the output of the program by the following example process that returns the addition of two natural numbers.
+The type definition can refer to earlier code.
+\lstinputlisting{code/add.eps}
+The output has the following form:
+\begin{minted}{text}
+  Typecheck successful                  
+  Executing process add_test_1:
+  #0 -> 'succ.'succ.'succ.'zero.()
+\end{minted}
+Executing process \texttt{add\_test\_1} will generate a fresh variable $\# 0$ for the external channel \texttt{n}.
+The rest represents the message sequence that is sent through the channel. 
+A message sequence is a sequence of observed messages separated by dots, which can be a channel $\# i$, a label $'l$, a unit $()$, and a waiting $-$.
+If a channel is in one of the message sequences, then it must have its own sequence.
+A channel sequence ends with either a unit, a waiting, or a cancellation.
+
+A waiting label is used for external channel that has a $\textbf{recv}$ process which cannot proceeds.
+In the above example, the message sequence \texttt{'succ.'succ.'succ.'zero.()} for channel $\# 0$ represents the natural number $3$.
+In the remaining of this chapter, we run through a few examples to see how cancellation and exception works.
+\section{Cancellation example}
+We first demonstrate how to drop resources in the example of returning a length of a list.
+\lstinputlisting{code/length.eps}
+The \texttt{'nil} case is straightforward, where we send $0$ through the channel \texttt{len}.
+In the \texttt{'cons} case, \texttt{l} has type \texttt{nat * list}.
+While calculating the length, we do not care the element stored in the list.
+Therefore, we cancel the channel \texttt{x} and recursively call the process.
+
+Since \texttt{x} is not an external channel in the above example, we cannot see how it is cancelled by observation.
+Below is an example that simulates a choice of output. 
+We first demonstrate how to drop resources in the example of returning a length of a list.
+\lstinputlisting{code/choice.eps}
+Since we know the output forms disjunction, we know exactly only one of the \texttt{left} and \texttt{right}
+will provide an output. 
+Which channel provides the output is decided by whether channel $x$ is \texttt{'true} or \texttt{'false}.
+Processes \texttt{choice\_true} and \texttt{choice\_false} tests the \texttt{choice} process.
+We present the output of the program below.
+\begin{minted}{text}
+  Typecheck successful                  
+  Executing process choice_true:
+  #1 -> cancelled
+  #0 -> ()
+
+  Executing process choice_false:
+  #1 -> ()
+  #0 -> cancelled
+\end{minted}
+As we can see, in \texttt{choice\_true} process, the \texttt{left} channel $(\# 0)$ receives a unit and the \texttt{right} channel $(\# 1)$ is cancelled.
+The output is reversed in \texttt{choice\_false} process, which matches with the expected behavior.
+\section{Exception example}
+The next example demonstrates how exceptions can be raised and handled. 
+A subtraction of \texttt{n1} and \texttt{n2} in natural number is not defined if 
+\texttt{n2} is bigger than \texttt{n1}. We deal such case by raising an exception and dropping all the resources.
+
+\lstinputlisting{code/subtract.eps}
 \chapter{Other features}
 \section{Uncaught exception}
 \appendix
-\chapter{EPass interpreter syntax} 
+\chapter{EPass} 
 \section{Grammar} \label{sec:grammar}
 \inputminted{text}{code/grammar.txt}
 \section{External language} \label{sec:el}

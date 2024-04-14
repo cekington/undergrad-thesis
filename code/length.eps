@@ -1,0 +1,9 @@
+proc length (len : nat) [l : list] = 
+  recv l (
+      'nil => recv l (() => send len 'zero; send len ())
+    | 'cons => recv l (x => 
+      cancel x;
+      send len 'succ;
+      call length (len) [l]
+    )
+  )

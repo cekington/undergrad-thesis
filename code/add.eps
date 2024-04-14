@@ -1,0 +1,12 @@
+proc add (n : nat) [n1 : nat, n2 : nat] = 
+  recv n1 (
+      'zero => recv n1 (() => fwd n n2)
+    | 'succ => send n 'succ; call add (n) [n1, n2]
+  )
+
+proc add_test_1 (n : nat) [] =
+  n1 : nat <- (send n1 'succ; send n1 'zero; send n1 ());
+  n2 : nat <- (send n2 'succ; send n2 'succ; send n2 'zero; send n2 ());
+  call add (n) [n1, n2]
+
+exec add_test_1

@@ -1,0 +1,19 @@
+type bool = +{'true : 1, 'false : 1}
+
+proc choice (left : 1, right : 1) [x : bool] =
+  recv x (
+    'true => recv x (() => cancel right; send left ())
+  | 'false => recv x (() => cancel left; send right ())
+  )
+
+proc choice_true (left : 1, right : 1) [] =
+  tt : bool <- (send tt 'true; send tt ());
+  call choice (left, right) [tt]
+
+proc choice_false (left : 1, right : 1) [] =
+  ff : bool <- (send ff 'false; send ff ());
+  call choice (left, right) [ff]
+
+exec choice_true
+
+exec choice_false
