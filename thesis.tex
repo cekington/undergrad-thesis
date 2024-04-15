@@ -240,6 +240,9 @@ According to implicit rule, when the process reaches its end, all channels in th
 This fails to verify whether the programmer intentionally or accidentally left some resources unused.
 
 \chapter{Type system}
+In this chapter we introduce the static semantic for our system. First we list the syntax and explain the behavior
+for the propositions (types) we include in the system. Next, we present the process syntax and the inference rules that
+defines the typing judgement for processes.
 \section{Propositions} \label{sec:propsyntax}
 The syntax of the propositions are defined in \cref{fig:propositions}.
 \begin{figure}[H]
@@ -511,7 +514,7 @@ Such rules are also called the static semantics of the type system.
     }
     \\
     \defrule[raise][raise]{\judge{\Gamma}{P}{\Delta}{\cdot}}{
-      \judge{\Gamma}{\craise{P}}{\Delta}{\Omega}
+      \judge{\Gamma}{\craise{P}}{\Delta}{x : \text{exn}}
     }\\
     \defrule[$\text{trycatch}_A$][trycatch]{
       \judge{\Gamma_1}{P(y)}{y : A, \Delta_1}{x : \text{exn}}\\
@@ -618,6 +621,13 @@ The restriction can be relaxed, since uncaught exceptions are common in programm
 We explore this feature in the later chapter.
 
 \chapter{Runtime semantics}
+We record the program as states and the execution of the program as transitions between states.
+Each state consists of a configuration and a cancelled set.
+The configuration is a multiset whose reduction follows linear inference, 
+while the cancelled set records the channels that are cancelled during the execution globally.
+We also formalize recursion to make program more expressive.
+After that, we prove the safety theorems of the system by showing well typed configuration will not get stuck, 
+and after reduction, the configuration will still be well typed.
 \section{Configuration}
 To formalize the runtime semantics, we can view each single process as an individual object.
 The start of the program can be viewed as a configuration with a single object.
@@ -768,7 +778,7 @@ A process can call itself to achieve self recursion.
   \caption{Extended syntax and static semantics of the type system}
   \label{fig:extended}
 \end{figure}
-The \textbf{call} process looks up the signature $\Sigma$ and finds the process defined by identifier $p$.
+The \textbf{call} process looks up the signature $\Sigma_\text{decl}$ and finds the process defined by identifier $p$.
 There should be no future processes after the \textbf{call}, thus we require process $P$ takes all the channels in $\Gamma$ and $\Delta$.
 The exception handling context $\Omega$ is inherited from the original process. 
 \section{Reduction}
@@ -959,7 +969,14 @@ which is formalized by the \stepref{finish}{end} rule.
 Now we examine the reduction rules in channel cancellation as listed in \cref{fig:cancelreduction}.
 The cancellation process drops a channel from the context and adds it to the cancellation set.
 We have two different rules for the right and left cancellation for the channel $a$ in the context $\Gamma$ and $\Delta$, respectively.
-The channel propagation rule states that if a channel $a$ is cancelled, then the process that involves the communication of $a$ should also be cancelled.
+The channel propagation rule states that if a channel $a$ is cancelled, then the process whose prefix is $a$ should also be cancelled.
+The prefix of a process is the channel that the process is directly communicate to. We list the prefix of a process in the following:
+\begin{align*}
+  \text{prefix}(\send{x}{M}) &= x \\
+  \text{prefix}(\recv{x}{K}) &= x \\
+  \text{prefix}(\fwd{y}{x}) &= y
+\end{align*}
+If the process is not included in the above list, then it does not have a prefix channel.
 Cancelling a process is achieved by replacing the process with a process that cancels all the channels in the context. 
 \begin{figure}[H]
   \begin{alignat}{4}
@@ -992,20 +1009,22 @@ Cancelling a process is achieved by replacing the process with a process that ca
     \label{cancel-prop-r} \textsc{[cancel-prop-r]} & ~ 
     \Braket{
       \begin{array}{l}
-        \procObj{\Gamma}{a : A, \Delta}{\Omega}{P(a)}
+        \procObj{\Gamma}{a : A, \Delta}{\Omega}{P}\\
+        \text{prefix}(P) = a
       \end{array}
       ; \cancelSet \cup \{a\}
     } & ~ \longrightarrow & ~ 
     \Braket{
       \begin{array}{l}
-        \procObj{\Gamma}{\Delta}{\Omega}{\cancel{\Gamma}; \cancel{\Delta}}
+        \procObj{\Gamma}{\Delta}{\Omega}{\cancel{\Gamma}; \cancel{\Delta}} \\
       \end{array}
       ; \cancelSet \cup \{a\}
     } \tag*{} \\
     \label{cancel-prop-l} \textsc{[cancel-prop-l]} & ~ 
     \Braket{
       \begin{array}{l}
-        \procObj{\Gamma, a : A}{\Delta}{\Omega}{P(a)}
+        \procObj{\Gamma, a : A}{\Delta}{\Omega}{P} \\
+        \text{prefix}(P) = a
       \end{array}
       ; \cancelSet \cup \{a\}
     } & ~ \longrightarrow & ~ 
@@ -1235,6 +1254,7 @@ We present the grammar of the EPass language in \cref{sec:grammar}. There are a 
   \texttt{exec} $p$ executes a closed process, a process without any input channels, and prints out the observation of the external channels. 
   \item We keep $\multimap$ as the linear implication in our language. Although we do not include it in our system, we have shown $A \multimap B$ can be derived in our system.
   Thus, $A \multimap B$ is viewed as a syntax sugar that is elaborated to $A^\bot \pare B$ during elaboration.
+  We do not include $\boldsymbol{\bot}$, since we can derive it by putting $\textbf{1}$ in the other side of the context.
   \item There is not a suitable Unicode character to represent $\pare$. We use @ to represent the multiplicative disjunction.
   \item We modify the try-catch process such that creating a new channel is not necessary. 
   This can be used when the main process and the exception handling process are independent with each other.
@@ -1332,11 +1352,253 @@ The output is reversed in \texttt{choice\_false} process, which matches with the
 \section{Exception example}
 The next example demonstrates how exceptions can be raised and handled. 
 A subtraction of \texttt{n1} and \texttt{n2} in natural number is not defined if 
-\texttt{n2} is bigger than \texttt{n1}. We deal such case by raising an exception and dropping all the resources.
-
+\texttt{n2} is bigger than \texttt{n1}. We deal such case by raising an exception and dropping all the unused resources.
 \lstinputlisting{code/subtract.eps}
+We provide a wrapper process \texttt{wrap\_subtract} to call the \texttt{subtract} process,
+since we do not allow exceptions which do not have any handling process. Because the process is for example usage,
+we do not do anything interesting in the \texttt{catch} branch. We simply return a $0$ from another external channel \texttt{n\_exn}.
+
+Information can also be exchanged between the main process and the exception handling process by creating a new channel.
+For instance, when zipping two lists and the length of the lists are not equal, 
+the first attempt of zip will raise an exception and passes the difference of the length of the lists to the second attempt, which is the exception process.
+The second attempt can then remove the difference of the length of the lists and zip the rest of the lists again.
 \chapter{Other features}
+In this chapter, we explore some advanced features or remove some constraints in the system 
+to make the language more capable in various situation. We study uncaught exception and non-exhaustive match in our system.
+To adjust with the changes, we revisit the typing judgement and the reduction rules.
+Moreover, we restate the safety theorem to coherent with the new system.
+Related work and future plans are also included in the last part of this chapter. 
 \section{Uncaught exception}
+In most programming languages, uncaught exceptions cause runtime crashes and are reported from the top level. For example, 
+the following expression
+\begin{minted}{ocaml}
+  let x = 1 / 0 in
+  x + 1  
+\end{minted}
+aborts the program and print the following information into console.
+\begin{minted}{text}
+  Uncaught exception:                   
+    
+  Division_by_zero
+
+  Raised at ... in file "...", line ..., characters ...
+  Called from ... in file "...", line ..., characters ...
+\end{minted}
+Such behavior is prohibited in our system, since we require every exception to be caught by a process.
+Otherwise, the program fails at the typing checking phase. However, we can relax this constraint by allowing uncaught exceptions.
+We modify the \ruleref{raise} rule.
+\begin{rules}
+  \defrule[raise'][raise']{
+    \judge{\Gamma}{P}{\Delta}{\cdot}
+  }{\judge{\Gamma}{\craise{P}}{\Delta}{\Omega}}
+\end{rules}
+We relax the constraint that $\Omega$ must be a singleton set. In \ruleref{raise'} rule, $\Omega$ can be either an empty set or a singleton set.
+The premise does not change since $\craise{P}$ uses the exception channel no matter whether it is in $\Omega$ or not.
+A key observation is that under such relaxation, judgement $\judge{\Gamma}{P}{\Delta}{x : \text{exn}}$ is provable if and only if
+$\judge{\Gamma}{P}{\Delta}{\cdot}$. Thus, it seems that the $\Omega$ context is useless and can be omitted in the typing judgement.
+However, we can utilize $\Omega$ during the type checking phase and output warning information
+if an exception does not have direct handling process. For instance, the following code 
+\begin{lstlisting}
+proc foo (x : 1) [] = 
+  raise (cancel x)
+\end{lstlisting}
+will output the following message to the console.
+\begin{minted}{text}
+  Warning: In process foo, raise (cancel x) does not have 
+  its corresponding exceptional handler
+\end{minted}
+However, the warning message is conservative in some sense. For example,
+if another process \texttt{bar} calls the process \texttt{foo}. No matter whether \texttt{bar} catches the exception or not,  
+the warning message still prints to the console. Only direct caught exceptions like
+\begin{lstlisting}
+proc foo' (x : 1, y : 1) [] =
+  try raise (cancel x) catch send y ()
+\end{lstlisting}
+will not produce the warning message.
+
+We adapt the same industry standard for uncaught exceptions. If an exception is not caught by any process,
+the program will abort. We define an error configuration $\Lambda$ in \cref{fig:abortcfg} to indicate that the program is terminated unexpectedly.
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{r r r l l}
+    Configuration & $\config$ & $::=$ & $\ldots$ &  \\
+    & & $\mid$ & $\Lambda$ & error configuration
+   \end{tabular}
+   \begin{rules}
+    \defrule[error][error]{}{\Phi \vdash \Lambda :: \Phi'}
+   \end{rules}
+   \vspace*{-1cm}
+   \begin{alignat}{4}
+    \label{uncaught} \textsc{[uncaught]} & ~ 
+    \Braket{
+      \begin{array}{l}
+        \procObj{\Gamma}{\Delta}{\cdot}{\craise{P}}
+      \end{array}
+      ; \cancelSet
+    } & ~ \longrightarrow & ~ 
+    \Braket{
+      \begin{array}{l}
+        \Lambda
+      \end{array}
+      ; \cancelSet
+    } \tag*{}
+  \end{alignat}
+  \caption{Extended syntax, typing judgement, and reduction of the configuration}
+  \label{fig:abortcfg}
+\end{figure}
+The typing judgement for the error configuration does not matter. 
+Therefore, $\Lambda$ is well-typed for any input context $\Phi$ and output context $\Phi'$.
+We add a new rule \stepref{uncaught}{uncaught}, which is another case of \stepref{activation}{activate} rule where $\Omega$ is empty.
+When an exception is raised with no handling channels, the configuration steps to the error configuration $\Lambda$ directly.
+This avoids the problem of concurrent top level exceptions where it is not clear which exception should be raised.
+In our system, the configuration reduces to the only error configuration and other processes are stopped.
+
+To account for the new reduction rule, we revisit the safety theorems and their proofs.
+There is no major change in the proofs of \cref{thm:preservation}, because if a configuration reduces to an error configuration, 
+we know such configuration is still well-typed by \ruleref{error}. We revise \cref{thm:progress} as follows.
+\begin{theorem}[Deadlock Freedom Revisited]
+  Given a state $\langle \config; \cancelSet \rangle$ such that $\cdot \vdash \config :: \Phi$, then either
+  $\config$ is final, $\langle \config; \cancelSet \rangle \longrightarrow \langle \Lambda; \cancelSet \rangle$ or $\langle \config; \cancelSet \rangle \longrightarrow \langle \config'; \cancelSet' \rangle$ for some $\config', \cancelSet'$.
+\end{theorem}
+The proof of this theorem extends the original proof by adding the case of uncaught exception. The proof is trivial and thus omitted.
+
+In the interpreter, we abort the program simulation when we face with an uncaught exception. For example, in the following tiny example,
+\begin{lstlisting}
+proc foo (x : 1) [] = 
+  raise (cancel x)
+
+proc foo1 (x : 1) [] =
+  send x ()
+
+exec foo1
+
+exec foo2
+\end{lstlisting}
+we get the following message from the console.
+\begin{minted}{text}
+  Executing process foo1:
+  Uncaught exception, process aborted
+
+  Executing process foo2:
+  #0 -> ()
+\end{minted}
+It is worth noting that execution of processes are independent of each other, thus a crash in \texttt{foo1} does not affect 
+the execution of \texttt{foo2}. The next feature builds on the idea of uncaught exceptions.
+
+\section{Non-exhaustive match}
+Pattern match are used for casing on algebraic data types in functional programming languages. The label message reduction 
+in our system looks like pattern match. For instance, when we are receiving messages from a channel of type \texttt{nat},
+we need to provide a branch for each label in the type definition. Right now we require that every label must have its own branch 
+as restricted by the \ruleref{orL} and \ruleref{withR}.
+Non-exhaustive match is a common warning or error in most programming languages.
+Such matching will cease the program execution if the expression does not match with any of the branches.
+A good programming habit is to use a wild case to deal with all the remaining, possibly uninteresting cases.
+We implement the idea of non-exhaustive match in our system by raise an exception when the label does not have its corresponding branch.
+To relax such constraints, we modify the \ruleref{orL} and \ruleref{withR} rules in \cref{fig:nonexhaustive}.
+The branching label collection $L'$ is a subset of the original label collection $L$, which means in the original old rule, $L' = L$.
+\begin{figure}[H]
+  \begin{rules}
+    \defrule[$\oplus L'$][orL']{
+      \judge{\Gamma, x : A_l}{P_l}{\Delta}{\Omega} \\
+      L' \subseteq L \\
+      (\forall l \in L')
+    }{\judge{\Gamma, x : \oplus\{l : A_l\}_{l \in L}}{\recv{x}{(l \Rightarrow P_l)_{l \in L'}}}{\Delta}{\Omega}}
+    \\
+    \defrule[$\& R'$][withR']{
+      \judge{\Gamma}{P_l}{x : A_l, \Delta}{\Omega} \\
+      L' \subseteq L \\
+      (\forall l \in L')
+    }{\judge{\Gamma}{\recv{x}{(l \Rightarrow P_l)_{l \in L'}}}{x : \&\{l : A_l\}_{l \in L}, \Delta}{\Omega}}
+  \end{rules}
+  \caption{Refined typing judgement for non-exhaustive match}
+  \label{fig:nonexhaustive}
+\end{figure}
+The original reduction rules for labels no longer holds. In \stepref{label-reduction-l}{label-l} 
+and \stepref{label-reduction-r}{label-r} rule, we need to ensure that $k \in L$.
+To account for the possibility of $k \not\in L$, we add two new reduction rules in \cref{fig:nonexreduction}.
+The intended behavior is to raise an exception and channel all the channels that are prepared for the \textbf{recv} process.
+\begin{figure}[H]
+  \begin{alignat}{4}
+    \label{label-reduction-r'} \textsc{[label-r']} & ~ 
+      \Braket{
+        \begin{array}{l}
+          \procObj{\Gamma_1}{a : \oplus\{l : A_l\}_{l \in L}, \Delta_1}{\Omega_1}{\send{a}{k}; P} \\
+          \procObj{\Gamma_2, a : \oplus\{l : A_l\}_{l \in L}}{\Delta_2}{\Omega_2}{\recv{a}{(l \Rightarrow P_l)_{l \in L}}}
+        \end{array}
+        (k \not\in L)
+        ; \cancelSet
+      } & ~ \longrightarrow & ~ 
+      \Braket{
+        \begin{array}{l}
+          \procObj{\Gamma_1}{a : A_k, \Delta_1}{\Omega_1}{P} \\
+          \procObj{\Gamma_2, a : A_k}{\Delta_2}{\Omega_2}{\cancel{a}, \cancel{\Gamma_2}, \cancel{\Delta_2}}
+        \end{array}
+        ; \cancelSet
+    } \tag*{} \\
+    \label{label-reduction-l'} \textsc{[label-l']} & ~ 
+      \Braket{
+        \begin{array}{l}
+          \procObj{\Gamma_1, a : \&\{l : A_l\}_{l \in L}}{\Delta_1}{\Omega_1}{\send{a}{k}; P} \\
+          \procObj{\Gamma_2}{a : \&\{l : A_l\}_{l \in L}, \Delta_2}{\Omega_2}{\recv{a}{(l \Rightarrow P_l)_{l \in L}}}
+        \end{array}
+        (k \not\in L)
+        ; \cancelSet
+      } & ~ \longrightarrow & ~ 
+      \Braket{
+        \begin{array}{l}
+          \procObj{\Gamma_1, a : A_k}{\Delta_1}{\Omega_1}{P} \\
+          \procObj{\Gamma_2}{a : A_k, \Delta_2}{\Omega_2}{\cancel{a}, \cancel{\Gamma_2}, \cancel{\Delta_2}}
+        \end{array}
+        ; \cancelSet
+    } \tag*{}
+  \end{alignat}
+  \raggedleft
+  \caption{Extended standard reduction rules of configuration for non-exhaustive match}
+  \label{fig:nonexreduction}
+\end{figure}
+In the runtime simulation, a warning message will be printed to the console any branching continuation misses a label.
+A non-exhaustive match, if not handled, will raise an uncaught exception and behaves as described in the previous section.
+We demonstrate the non-exhaustive match by the following simple example.
+\lstinputlisting{code/unmatch.eps}
+The output of the program is as follows.
+\begin{minted}{text}
+  Warning: In process choose, choice type of channel c
+  has non-exaustive match, missing label: 'b
+  
+  Executing process test_choose1:
+  #0 -> 'true.()
+
+  Executing process test_choose2:
+  Uncaught exception, process aborted
+\end{minted}
+A warning message is printed for the process \texttt{choose} because the label \texttt{'b} is missing.
+In the process \texttt{test\_choose2}, an uncaught exception is raised because the label send through channel \texttt{c} is \texttt{'b}
+and the program is aborted. Such feature can also be used to simulate process assertion. 
+If we are certain that some label should never be sent through a channel, for instance \texttt{'true} or \texttt{'false},
+we can omit such cases in branching.
+\section{Related work and future work}
+We divide the related work into two parts: channel cancellation and exception handling. 
+
+Channel cancellation is first proposed in Affine session that models channel interruption.
+We utilize this idea and refine it as the proof term of explicit weakening rules. 
+The refinement provides a better way to understand the channel cancellation
+and connects the relation between processed and sequent proof terms.
+
+In the work of Conversation Calculus, the model provides a simple mechanism by supporting two primitives \texttt{throw} 
+and \texttt{try catch} to handle exceptional situations \cite{Vieira2008}. Compared with our work, 
+we provide a typed language where the exceptions are generalized. For instance,
+we can simulate server timeout and client reconnect example studied by Brun and Dardha \cite{Brun2023}.
+
+Adjoint logic generalizes the usual
+binary session types by supporting multiple modes of communication \cite{Klaas2019}.
+The current system works under affine logic, which is one layer of adjoint logic.
+It remains interesting how exception handling can be generalized to adjoint logic.
+In other words, how to pass exceptions from one mode to another mode while both having the correct intended behavior and
+keeping the safety of the language. Meanwhile, previous works model data layout using 
+semi-axiomatic sequent calculus \cite{DeYoung2023}. Memory access errors such as 
+writing to a freed memory cell or dereferencing an invalid address. In the future work,
+we plan to work under a shared memory interpretation and study the exceptions.
+
 \appendix
 \chapter{EPass} 
 \section{Grammar} \label{sec:grammar}
