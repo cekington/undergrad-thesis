@@ -80,8 +80,8 @@
   Session types are used to describe the structure of communications across channels. Previous research has established a message-passing interpretation of intuitionistic linear logic. 
   Meanwhile, communication failures have been an important research topic in session types. 
   However, the exception handling mechanism has not been well studied in the context of message passing. 
-  To bridge this gap, we studied the interpretation of classical affine logic and proposed a new type system containing features such as explicit channel cancellation and exception handling constructors. 
-  Our type system ensures program correctness by enforcing session fidelity and deadlock freedom. 
+  To bridge this gap, we study the interpretation of classical affine logic and propose a new type system containing features such as explicit channel cancellation and exception handling constructors. 
+  Our type system ensures program safety by enforcing session fidelity and deadlock freedom. 
   To experiment, we implemented an interpreter for our language and tested it on several examples to match the expected process behavior. 
   Additionally, we explore the possibility of representing some programming features, such as non-exhaustive matches, in our language using the exception mechanism.
 \end{abstract}
@@ -97,13 +97,15 @@ TBD
 
 \chapter{Introduction}
 
-Linear logic is a refinement of intuitionistic logic that does not satisfy weakening and contraction. 
+Linear logic \cite{Girard1987} is a refinement of intuitionistic logic that does not satisfy weakening and contraction. 
+Weakening drops resources in the contest and contraction duplicates resources. 
 It emphasizes the management of resources, where each formula should be used exactly once. 
 Informally speaking, the assumption cannot be too strong for the conclusion, such as $A, B \vdash B$.
+
 The Curry-Howard isomorphism states a correspondence between logical proof theory and computational type theory \cite{Howard1980}.
-The computational interpretation of linear logic, firstly given by Abramsky, lays the foundation for the connection between $\pi$-calculus and linear logic \cite{Abramsky1933}. 
+A computational interpretation of linear logic, first given by Abramsky, lays the foundation for the connection between $\pi$-calculus and linear logic \cite{Abramsky1933}. 
 Later on, an expressive formulation of intuitionistic linear logic provides a correspondence between linear proofs and processes, 
-which gives rise to two important ideas: proofs as processes and cut as computation \cite{Caires2014}.
+which gives rise to two important ideas: proofs as processes \cite{Abramsky1994} and cut as computation \cite{Caires2014}.
 
 On the other hand, exceptions have been a practical topic during the development of programming languages.
 Programmers can utilize exceptions to write explicit control flow for their code. In most functional programming languages, exceptions are managed by expression constructors. 
@@ -128,18 +130,18 @@ and the second catches the signal and activates an additional process that handl
 We briefly summarize the outline and contributions of this thesis.
 In the rest of Chapter $1$, we will introduce the correlation between sequent proofs and processes, classical affine logic, and exceptions in functional programming languages.
 Chapter $2$ will present the new type system we propose that deals with exceptions and its statics.
-Computation steps and meta theories that ensures safety of our type system will be formalized and proved in Chapter $3$. 
+We present the model for process reduction and prove the safety of our type system in Chapter $3$.
 In Chapter 4, we will demonstrate the implementation of the language interpreter and provide examples of traced processes.
 Finally, Chapter $5$ will show how to represent non-exhaustive matches under our type system, with commentary on related work, limitations of the current approach, and avenues for future research.
 \section{Proofs as processes} 
 A sequent proof of a proposition provides its computational meaning.
-We use proof terms to record the structure of proofs such that we can reconstruct the proof by its proof term.
+We use proof terms to record the structure of proofs such that we can reconstruct the proof from its proof term.
 In the context of intuitionistic linear logic, the proof term corresponds to a process. 
 Below is an annotated sequent proof in intuitionistic linear logic.
 \[
   x_1 : A_1, x_2 : A_2, \ldots, x_n : A_n \vdash P :: c : C
 \]
-where variables $x_1, x_2, \ldots, x_n, c$ represents distinct channels, propositions $A_1, A_2, \ldots, C$ represents session types, 
+where variables $x_1, x_2, \ldots, x_n, c$ represents distinct channels, propositions $A_1, A_2, \ldots, C$ represents session types \cite{Caires2010}, 
 and annotation $x_i : A_i$ means the messages send along channel $x_i$ must obey the communication behavior specified by $A_i$.
 Under such setting, we can regard the sequent as a process $P$ that uses all the channels in the antecedent and provides a channel in the succedent.
 
@@ -162,7 +164,7 @@ The cut rule can also be understood as the spawning of a new process.
 The main thread spawns a new process $P$, splits the current resources, creates a new channel $x$,
 assigns it as process $P$'s endpoint, and continues to execute the rest of the process $Q$ with the remaining resources in parallel.
 \section{Classical linear logic} \label{sec:cll}
-In classical logic, the judgement has the following form.
+In classical logic, the judgment of entailment has the following form.
 \[
   A_1, A_2, \ldots, A_n \vdash C_1, C_2, \ldots, C_m
 \]
@@ -178,7 +180,7 @@ In other words, it assumes the contrary and tries to derive a contradiction.
 
 Previous research has shown that classical linear logic can be viewed as $\pi$-calculus
 by interpreting the negation as a dual operation on session types \cite{Wadler2012}. 
-Defining the dual of a session type $A$ is $A^{\bot}$, we can rewrite the above the judgement in a single-sided form.
+Defining the dual of a session type $A$ is $A^{\bot}$, we can rewrite the above the judgment in a single-sided form.
 \[
   \vdash A_1^\bot, A_2^\bot, \ldots, A_n^\bot, C_1, C_2, \ldots, C_m
 \]
@@ -193,19 +195,23 @@ Instead of cutting a proposition on different sides of inference, we cut a propo
 In classical logic, we know a proposition $A$ is either true or its dual proposition $A^\bot$ is true.
 In the above cut rule, we can eliminate the usage of $A$ by connecting the remaining context using disjunction. 
 
-Under the interpretation of proofs as processes, we can write the annotated two-sided judgement as follows.
+Under the interpretation of proofs as processes, we can write the annotated two-sided judgment as follows.
 \[
   x_1 : A_1, x_2 : A_2, \ldots, x_n : A_n \vdash P :: y_1 : C_1, y_2 : C_2, \ldots, y_m : C_m
 \]
-This judgement can be viewed as a process $P$ that communicates along channels $x_1, x_2, \ldots, x_n$
+This judgment can be viewed as a process $P$ that communicates along channels $x_1, x_2, \ldots, x_n$
 and $y_1, y_2, \ldots, y_m$, where each channel obeys its protocol requirements.
 We do not distinguish whether a channel is used or provided, because we can always use the negation rule to flip the propositions.
 In other word, classical logic blurs the distinction between client and server roles in concurrent communication.
-It is possible to demonstrate the safety of this system by converting it back to intuitionistic linear logic through double negation translation \cite{Friedman1978}.
-Such translation has practical applications, such as continuation passing style translation.
+The translation from classical linear logic to intuitionistic linear logic using double negation
+is well studied \cite{Olivier2018}, 
+thus it is possible to demonstrate the safety of this system by converting it back to intuitionistic linear logic \cite{Friedman1978}.
+Such translation has practical applications, such as continuation passing style translation \cite{Appel1991}.
 \section{Affine logic}
 Affine logic is a substructural logic that rejects the structural rule of contraction. 
 In other words, it is a form of linear logic that retains the weakening rule. 
+Such logic is widely appreciated in programming languages such as Rust,
+where the usage of all strongly typed channels is guaranteed to be affine \cite{Lagaillardie2022}.
 There are two ways of formalizing weakening rules. 
 The first formulation is implicit weakening, which modifies the original rules, 
 such as the identity rule, to allow for the closure of the proof by silently discarding all propositions in the context.
@@ -220,7 +226,8 @@ Another formulation adds the explicit weakening rules.
 \]
 Under the classical setting, we will have two weakening rules, one for the antecedent and another one for the succedent.
 We can establish the equivalence of these two formulations. 
-However, concerning the computational interpretation, the explicit formulation holds greater favorability for two reasons.
+However, concerning the computational interpretation, the explicit formulation 
+is more advantageous for two reasons.
 Firstly, it offers explicit resource control for programmers. 
 Let us annotate the explicit weakening rule as follows.
 \[
@@ -231,17 +238,20 @@ Let us annotate the explicit weakening rule as follows.
 We can interpret this rule as a process that discards the future usage of channel $x$ from resources and proceeds with process $P$. 
 Discarding resources is a common practice in programming. For example, below is an implementation of a function that returns the length of a list.
 \inputminted{ocaml}{code/length.ml}
-In the inductive case where the list is not empty, the function discards the head of the list and proceeds with the remain list.
-If we enforce linearity in this function, we will have to do unnecessary operations to use the element of the list, which is not appropriate.
+In the inductive case where the list is not empty, 
+the function discards the head of the list and proceeds with the remaining list. 
+If we enforce linearity in this function, 
+we need to rewrite the function to have the type \mintinline{ocaml}{'a list -> int * 'a list}
+so that we reconstruct the list while computing its length for any future usage of the list.  
 
 Besides the usage of dropping resources, static checking for the interpreter does not align well with implicit weakening. 
-According to implicit rule, when the process reaches its end, all channels in the context will be discarded. 
+According to the implicit rule, when the process reaches its end, all channels in the context will be discarded. 
 This fails to verify whether the programmer intentionally or accidentally left some resources unused.
-
 \chapter{Type system}
-In this chapter we introduce the static semantic for our system. First we list the syntax and explain the behavior
-for the propositions (types) we include in the system. Next, we present the process syntax and the inference rules that
-defines the typing judgement for processes.
+
+In this chapter, we introduce the static semantics for our system. 
+First, we list the syntax and explain the behavior of the propositions (types) included in the system.
+Next, we present the process syntax and the inference rules that define the typing judgment for processes.
 \section{Propositions} \label{sec:propsyntax}
 The syntax of the propositions are defined in \cref{fig:propositions}.
 \begin{figure}[H]
@@ -251,8 +261,8 @@ The syntax of the propositions are defined in \cref{fig:propositions}.
     & $\mid$ & $\boldsymbol{\bot}$ & 'Bottom', nullary case of $\pare$  \\
     & $\mid$ & $A \otimes B$ & 'Tensor', communicates with $A$ and behaves as $B$  \\  
     & $\mid$ & $A \pare B$ & 'Par', communicates with $A$ and behaves as $B$ \\    
-    & $\mid$ & $\& \{l : A_l\}_{l \in L}$ & 'With', $n-$ary choices distinguished by labels $l$ \\
-    & $\mid$ & $\oplus \{l : A_l\}_{l \in L}$ & 'Plus', $n-$ary choices distinguished by labels $l$ 
+    & $\mid$ & $\& \{l : A_l\}_{l \in L}$ & 'With', finite choices $L$ distinguished by labels $l$ \\
+    & $\mid$ & $\oplus \{l : A_l\}_{l \in L}$ & 'Plus', finite choices $L$ distinguished by labels $l$ 
    \end{tabular}
   \caption{Syntax of propositions}
   \label{fig:propositions}
@@ -260,7 +270,7 @@ The syntax of the propositions are defined in \cref{fig:propositions}.
 \begin{figure}[H]
   \centering
   \begin{tabular}{r c l l}
-    $(A)^\bot$ & $\longrightarrow$ & $A^\bot$ & $A$ atom \\ 
+    $(P)^\bot$ & $\longrightarrow$ & $P^\bot$ & $P$ atom \\ 
     $\textbf{1}^\bot$ & $\longrightarrow$ & $\boldsymbol{\bot}$ & \\
     $\boldsymbol{\bot} ^ \bot$ & $\longrightarrow$ & $\textbf{1}$ & \\
     $(A \otimes B)^\bot$ & $\longrightarrow$ & $A^\bot\pare B^\bot$ &  \\  
@@ -320,6 +330,7 @@ To simplify the explanation of the propositions, we discuss their logical behavi
     }
   \]
   The additive conjunction $\&\{l : A_l\}_{l \in L}$ is true if for all $l \in L$, $A_l$ are true separately with the current resources.
+  We need one premise for each label in $L$.
   \item Plus
   \[
     \infer[\oplus R_k]{\Gamma \vdash \oplus\{l : A_l\}_{l \in L}, \Delta}{
@@ -329,11 +340,11 @@ To simplify the explanation of the propositions, we discuss their logical behavi
     }
   \]
   The additive disjunction $\oplus\{l : A_l\}_{l \in L}$ is true if there exists some $k \in L$ such that $A_k$ is true with the current resources.
-  Therefore, the number of rules is equal to the number of labels in $L$.
+  We can replace the subscript $k$ by any other labels in $L$. In other words, we have $|L|$ instances of this rule.
 \end{itemize}
 The linear implication $A \multimap B$ is not included in the system because it can be derived from $A^\bot \pare B$. 
 We can prove this equivalence. Assume $\Gamma \vdash A \multimap B$, by the invertibility, we have $\Gamma, A \vdash B$. 
-Using the dual operator, we can derive $\Gamma \vdash A^\bot, B$. By $\pare R$, we conclude $\Gamma \vdash A \pare B$. 
+Using the dual operator, we can derive $\Gamma \vdash A^\bot, B$. By $\pare R$, we conclude $\Gamma \vdash A^\bot \pare B$. 
 Since the proof is invertible, we can derive the other direction as well.
 
 We include the inference rules of identity and cut in our system.
@@ -365,14 +376,13 @@ we have weakening rules for both the antecedent and the succedent.
     \Gamma \vdash \Delta
   }
 \]
-
-To avoid arbitrary splitting of the context and extra premises, we modify the $\otimes R$ as the following:
+To avoid arbitrary splitting of the context and extra premises in $\otimes R$, we use the alternative version $\otimes R^*$ \cite{Caires2010}.
 \[
   \infer[\otimes R^*]{\Gamma, A \vdash A \otimes B, \Delta}{
     \Gamma \vdash B, \Delta
   }
 \]
-To prove this rule sensible in the original logical system, we need to show that the original $\otimes R$ can be derived from $\otimes R^*$ and vice versa.
+We provide a simple justification for the sensibility of this rule by showing the original $\otimes R$ can be derived from $\otimes R^*$ and vice versa.
 \begin{itemize}
   \item Assume we have a derivation $\mathcal{D}_1$ for $\Gamma_1 \vdash A, \Delta_1$ and $\mathcal{D}_2$ for $\Gamma_2 \vdash B, \Delta_2$.
   We can create a derivation for $\Gamma_1, \Gamma_2 \vdash A \otimes B, \Delta_1, \Delta_2$ without using $\otimes R$ rule as the following:
@@ -402,7 +412,7 @@ We can rewrite $\pare L^*$ rule accordingly and justify its equivalence with the
   }
 \]
 \section{Processes}
-In this section, we will annotate the proofs with proof terms as interpret them as processes.
+In this section, we will annotate the proofs with proof terms and interpret them as processes.
 Moreover, we will introduce our exception handling mechanism in our system. 
 We first present the syntax of the processes in \cref{fig:processes}.
 \begin{figure}[H]
@@ -421,16 +431,14 @@ We first present the syntax of the processes in \cref{fig:processes}.
     & & $\mid$ & $\spawn{P}{Q}{x}$ \\
     & & $\mid$ & $\craise{M}$ \\
     & & $\mid$ & $\trycatch{P}{Q}{x}$ \\
-    & & $\mid$ & $\cdot$ \\
-    & & $\mid$ & $P; Q$
    \end{tabular}
   \caption{Syntax of processes}
   \label{fig:processes}
 \end{figure}
-We separate the terms into three categories: messages, continuations, and processes. 
+We separate the terms into three categories: \textit{messages}, \textit{continuations}, and \textit{processes}. 
 Variables are used to represent channels and strings are used to represent labels. 
 We require the channels to have distinct names. 
-The information passed through channels is called messages, which can be either a unit message $()$, 
+The information passed through channels can be either a unit message $()$, 
 a label $l$, or a channel $x$. The continuation specifies the behavior of the process after receiving a message. 
 Correspondingly, there are three kinds of continuations. 
 $(() \Rightarrow P)$ is a unit continuation that waits for a unit message and continues with process $P$. 
@@ -448,9 +456,9 @@ We can use propositions as session types introduced in \cref{sec:propsyntax} to 
 More details on this observation will be discussed in the operational semantics.
 
 We present the annotated inference rules in \cref{fig:static}, where proof terms are interpreted as processes. 
-The judgement has the form $\judge{\Gamma}{P}{\Delta}{\Omega}$, 
+The judgment has the form $\judge{\Gamma}{P}{\Delta}{\Omega}$, 
 which means the process $P$ communicates along the channels in $\Gamma$ and $\Delta$ and has an exception handler $\Omega$. 
-Such rules are also called the static semantics of the type system.
+The usage of the singleton context $\Omega$ is explained in \cref{sec:exnproc}.
 \begin{figure}
   \begin{rules}
     \defrule[\textbf{1}$R$][oneR]{}{\judge{\cdot}{\send{x}{()}}{x : \textbf{1}}{\Omega}}
@@ -506,10 +514,6 @@ Such rules are also called the static semantics of the type system.
     \defrule[$\text{cut}_A$][cut]{\judge{\Gamma_1}{P(x)}{x : A, \Delta_1}{\cdot} \\ \judge{\Gamma_2, x : A}{Q(x)}{\Delta_2}{\Omega}}{
       \judge{\Gamma_1, \Gamma_2}{\spawn{P}{Q}{x}}{\Delta_1, \Delta_2}{\Omega}
     }
-    \qquad
-    \defrule[empty][nothing]{}{
-      \judge{\cdot}{\cdot}{\cdot}{\Omega}
-    }
     \\
     \defrule[raise][raise]{\judge{\Gamma}{P}{\Delta}{\cdot}}{
       \judge{\Gamma}{\craise{P}}{\Delta}{x : \text{exn}}
@@ -546,25 +550,25 @@ For instance, in the \ruleref{tensorR} rule, the process $\send{x}{y}; P$ sends 
 Before sending the channel $y$, the channel $x$ has type $A \otimes B$. 
 After sending $y$ of type $A$, the channel $x$ evolves to type $B$. The last message corresponds to choice types $\oplus$ and $\&$. 
 A choice type is a collection of types distinguished by labels. 
-For instance, the type \texttt{bool} can be written as $\oplus{\text{true} : \textbf{1}, \text{false} : \textbf{1}}$, 
+For instance, the type \texttt{bool} can be written as $\oplus\{\text{true} : \textbf{1}, \text{false} : \textbf{1}\}$, 
 a choice type of two labels true and false with unit types. $\send{x}{l}$ sends a label $l$ along channel $x$. 
 This can be viewed as a process that makes a choice to select label $l$ from all the possible label collections $L$. 
 We add a subscript $k$ as a label to the \ruleref{orR} rule to indicate that the process chooses $k$. 
 The type of the channel evolves from choice type to the corresponding type of label $k$. 
 $\recv{x}{(l \Rightarrow P_l)}$ provides a branching continuation that selects one branch to execute based on the label it receives. 
 We write $\forall l \in L$ to indicate that the process has prepared a process for each label in $L$. 
-In other words, if there is some label missing in the branching, the process will be stuck and cannot proceed. 
-However, we can exploit this feature by including non-exhaustive matches in our language, which will be discussed in the later section.
+In other words, if there is some label missing in the branching, the process will panic and do not know how to proceed. 
+However, we can exploit this feature by including non-exhaustive matches in our language, which will be discussed in \cref{sec:nonexhaust}.
 
 Now we discuss the structural rules of our system. The weakening rule is represented by the channel cancellation process $\cancel{x}$. 
-Although we have two different weakening rules: $\ruleref{weakenL}$ and $\ruleref{weakenR}$, we do not distinguish their differences in process. 
+Although we have two different weakening rules: $\ruleref{weakenL}$ and $\ruleref{weakenR}$, we do not distinguish them syntactically. 
 The process $\cancel{x}$ discards the channel $x$ from the context and continues with process $P$ under the remaining context. 
 The $\ruleref{identity}$ rule is represented by the process $\fwd{y}{x}$, which passes the information from channel $y$ to channel $x$. 
 The cut rule spawns a child process $P$ with a newly created private channel $x$ and continues with the parent process $Q$ under the remaining context. 
 The split of the exception handling context and the remaining rules about exceptions are discussed in the next section.
-\section{Exception processes}
+\section{Exception processes}\label{sec:exnproc}
 We first examine how exceptions are raised and handled in common functional programming languages. 
-Below is a division function that returns the division of two numbers optionally. In other words,
+Below is a function that returns the division of two numbers optionally. In other words,
 if there is no division by zero, the function returns the division of two numbers.
 Otherwise, it prints a message to console and returns none. 
 \inputminted{ocaml}{code/div.ml} 
@@ -573,12 +577,10 @@ Whether the print statement will be executed is not determined until the divisio
 We adapt such an idea in our exception handling mechanism. 
 The execution of an exception handling process requires the execution of the main process, 
 and we use $\Omega$ to store the channels that communicate between the main process and the exception handling process.
-
-A main process $P$'s $\Omega$ is a singleton context, 
+$\Omega$ is a singleton context, 
 which means it contains at most one channel. If there are no channels in $\Omega$, 
 this means process $P$ does not have any exception handling mechanism. 
-In other words, if $P$ raises an exception, it will be an uncaught exception. 
-Nevertheless, if a process has more than one handling mechanism, we can always combine them into one.
+Then, if $P$ raises an exception, it will be an uncaught exception. 
 \[
   \Omega = \cdot \mid x : \text{exn}
 \]
@@ -586,9 +588,9 @@ The channel in $\Omega$ has type $\text{exn}$, which is defined as the following
 \[
   \text{exn} = \oplus\{\text{act} : \textbf{1}, \text{sil} : \textbf{1}\}
 \]
-As described before, a channel of type $\text{exn}$ sends and receives a label of act or sil. 
-Act label represents activation of the exception handling process when an exception is raised.
-Conversely, sil label represents the drop of the exception handling process when the process finished executing without any processes.
+As described before, a channel of type $\text{exn}$ sends and receives a label of either \texttt{act} or \texttt{sil}. 
+\texttt{act} label represents activation of the exception handling process when an exception is raised.
+Conversely, \texttt{sil} label represents the drop of the exception handling process when the process finished executing without any exceptions.
 
 With enough introduction, we can look at the structure of $\ruleref{trycatch}$. 
 It creates a channel $y$ and splits the resources to execute the main process $P$.
@@ -609,15 +611,15 @@ Now let's revisit the body of the division function to see how exceptions are ra
 The division \texttt{a / b} is a partial function that will raise an exception when $b = 0$. 
 The exception is characterized by the exception constructor \texttt{Failure} with a message attached to it. 
 In the example above, we do not utilize the information stored in the exception.
- We follow the same structure in our system; instead of raising an exception with a value, 
- we raise a process as described in $\ruleref{raise}$. $\craise{P}$ raises an exception and continues to execute with process $P$. 
- Currently, we require the exception to be caught by the exception handling process. This invariant is enforced by requiring $\Omega$ to be non-empty. 
- However, this restriction can be relaxed, as uncaught exceptions are common in programming languages. We explore this feature in later chapters.
+We follow the same structure in our system; instead of raising an exception with a value, 
+we raise a \textit{process} as described in $\ruleref{raise}$. $\craise{P}$ raises an exception and continues to execute with process $P$. 
+Currently, we require the exception to be caught by the exception handling process. This invariant is enforced by requiring $\Omega$ to be non-empty. 
+However, this restriction can be relaxed, as uncaught exceptions are common in programming languages. We explore this feature in \cref{sec:uncaught}.
 
 \chapter{Runtime semantics}
-We record the program as states and the execution of the program as transitions between states. 
+We model the execution of the program as transitions between states. 
 Each state consists of a configuration and a cancelled set. 
-The configuration is a multiset whose reduction follows linear inference, 
+We adapt previous work by regarding the configuration as a multiset whose reduction follows linear inference \cite{Cervesato2009}, 
 while the cancelled set records the channels that are cancelled during the execution globally. 
 We also formalize recursion to make the program more expressive. 
 After that, we prove the safety theorems of the system by showing that well-typed configurations will not get stuck, 
@@ -638,14 +640,14 @@ adding new process objects to the configuration. We define the configuration $\c
   \caption{Syntax of configuration}
   \label{fig:config}
 \end{figure}
-Empty configuration is an empty multiset that does not contain any process object.
+The empty configuration is an empty multiset that does not contain any process object.
 A single process object of form $\procObj{\Gamma}{\Delta}{\Omega}{P}$ represents a process $P$
 communicates along the channels in $\Gamma$ and $\Delta$ and has an exception handling context $\Omega$.
 During the transition of the program, the meta variables in the process object may change accordingly.
 Lastly, the join combines two configuration into one configuration.
 
 To avoid the situation of bad programs, where one channel receives a label message and has a unit continuation, 
-we establish the typing judgement for configuration of form $\Phi \vdash \config :: \Phi'$. The configuration $\config$
+we establish the typing judgment for configuration of form $\Phi \vdash \config :: \Phi'$. The configuration $\config$
 uses channels in $\Phi$ and provides channels $\Phi'$. For instance, if a configuration $C$ uses channel $a : A$ and provides channel $b : B$,
 then $\Phi, a : A \vdash \config :: b : B, \Phi$ holds. We provide the relevant rules in \cref{fig:configtyping}.
 \begin{figure}[H]
@@ -661,10 +663,10 @@ then $\Phi, a : A \vdash \config :: b : B, \Phi$ holds. We provide the relevant 
       \Phi \vdash \config_1, \config_2 :: \Phi''
     }\\
     \defrule[object][config-object]{}{
-      \Phi, \Gamma \vdash \procObj{\Gamma}{\Delta}{\Omega}{P} :: \Delta, \Phi
+      \Phi, \Gamma \vdash \procObj{\Gamma}{\Delta}{\Omega}{P} :: \Delta, \Omega, \Phi
     }
   \end{rules}
-  \caption{Typing judgement of configuration}
+  \caption{Typing judgment of configuration}
   \label{fig:configtyping}
 \end{figure}
 $\ruleref{config-empty}$ states that an empty configuration does not use any channels and provides the same channels.
@@ -672,21 +674,21 @@ We add an arbitrary context $\Phi$ on both sides to generalize the $\ruleref{con
 $\ruleref{config-join}$ combines two configurations $\config_1$ and $\config_2$ into one configuration $\config$ by some certain order.
 This may contradict with the intuition that the configuration is an unordered set where $\config_1, \config_2$ should be as same as $\config_2, \config_1$.
 Here, we require that there exists an ordering of the configuration such that it is well-typed.
-Such ordering is not unique, apparently. Consider an example where $\config_1 = \procObj{\cdot}{a : A}{\Omega_1}{P}$ and $\config_2 = \procObj{b : B, c : C}{\cdot}{\Omega_2}{Q}$.
+Such ordering is not unique, apparently. Consider an example where $\config_1 = \procObj{\cdot}{a : A}{\cdot}{P}$ and $\config_2 = \procObj{b : B, c : C}{\cdot}{\cdot}{Q}$.
 We can join these two configurations in two ways: $\config = \config_1, \config_2$ and $\config = \config_2, \config_1$ where $b : B, c : C \vdash \config :: a : A$.
 Using the \ruleref{config-object}, we can find such $\Phi' = a : A, b : B, c : C$ for the first way and $\Phi' = \cdot$ for the second way.
-However, if we change $\config_2$ into $\procObj{a : A, b : B}{\cdot}{\Omega_2}{Q}$, the overall configuration $b : B \vdash \config :: \cdot$ still type checks, 
+However, if we change $\config_2$ into $\procObj{a : A, b : B}{\cdot}{\cdot}{Q}$, the overall configuration $b : B \vdash \config :: \cdot$ still type checks, 
 but the ordering is unique.
 It cannot be the case that $\config = \config_2, \config_1$, and the reason for that is because $\config_1$ provides channel $a$ that is used by $\config_2$.
-By this observation, two configurations can be swapped if none of the channels provided by the first configuration are not used by the second configuration.
+By this observation, two configurations can be swapped if none of the channels provided by the first configuration are used by the second configuration.
 
 Besides the configuration, we also need a globally defined set to store the channels that are cancelled during the execution, call it $\cancelSet$.
 The main reason why we need to keep track of this set is because the cancellation of a channel may affect the execution of other processes.
 Every channel can be viewed as a segment that has two endpoints. In the original execution, one endpoint will send a message and the other endpoint is a continuation that waits for this message.
 However, if one endpoint is cancelled, the other endpoint should also be cancelled accordingly. 
-Otherwise, the process will be stuck and cannot proceed. We call this procedure as cancellation propagation.
+We call this procedure \textit{cancellation propagation}.
 
-To conclude, the state of the computation is a pair of current configuration and cancelled sets $\langle \config, \cancelSet \rangle$.
+To conclude, the state of the computation is a pair of current configuration and cancelled set $\langle \config, \cancelSet \rangle$.
 \section{Recursion}
 Recursion is a very practical tool in programming, 
 and we also want such a feature in our system. However, the formalization of recursion has little to do with logics. 
@@ -696,8 +698,8 @@ whose syntax is defined in \cref{fig:syntaxsig}.
   \centering
   \begin{tabular}{r r l}
     $\Sigma_{\text{decl}}$ & $::=$ & $\cdot$ \\
-    & $\mid$ & $t : A$ \\
-    & $\mid$ & $p : (\Gamma, \Delta)$ \\
+    & $\mid$ & $t$ \\
+    & $\mid$ & $p : (X, Y)$ \\
     & $\mid$ & $\Sigma_{\text{decl}1}, \Sigma_{\text{decl}2}$ \\  
     $\Sigma_{\text{defn}}$ & $::=$ & $\cdot$ \\
     & $\mid$ & $t = A$ \\
@@ -707,16 +709,18 @@ whose syntax is defined in \cref{fig:syntaxsig}.
   \caption{Syntax of signature and structure}
   \label{fig:syntaxsig}
 \end{figure}
-A signature is a set of type declarations $t : A$ and process declarations $p : (\Gamma, \Delta)$. 
+A type declaration $t$ states that the identifier $t$ refers to a type, while
+a process declaration $p : (X, Y)$ specifies a process identifier $p$ whose input channel types are stored in a list $X$
+and output channel types in a list $Y$. 
 Such a signature can be determined when scanning through the whole program. 
 We want to ensure that all the definitions in the program are well-defined based on the declarations. 
 This structure records both type and process definitions. A type definition has the form $t = A$, 
 where $t$ is a type identifier and $A$ is a proposition. A process definition has the form $p (y_1, y_2, \ldots, y_m) [x_1, x_2, \ldots, x_n] = P$. 
 The identification includes a process name $p$, a list of output channels $y_1, y_2, \ldots, y_m$, 
 and a list of input channels $x_1, x_2, \ldots, x_n$. The process such identification represents is $P$. 
-We use the judgement $\Sigma_{\text{decl}} \vdash \Sigma_{\text{defn}} \textbf{ struct}$ to represent that $\Sigma_{\text{defn}}$ 
+We use the judgment $\Sigma_{\text{decl}} \vdash \Sigma_{\text{defn}} \textbf{ struct}$ to represent that $\Sigma_{\text{defn}}$ 
 is a valid structure given all the declarations in $\Sigma_{\text{decl}}$. We present the rules for signatures in \cref{fig:sig}. 
-The judgements for well-formed types $\Sigma_{\text{decl}} \vdash A \textbf{ type}$ 
+The judgments for well-formed types $\Sigma_{\text{decl}} \vdash A \textbf{ type}$ 
 and well-formed processes $\Sigma_{\text{decl}} \vdash P \textbf{ proc}$ can be defined by looking at the signature, 
 and thus we omit the rules here.
 \begin{figure}[H]
@@ -737,7 +741,7 @@ and thus we omit the rules here.
       \Sigma_{\text{decl}} \vdash \Sigma_{\text{defn}}, p (y_1, y_2, \ldots, y_m) [x_1, x_2, \ldots, x_n] = P \textbf{ struct}
     }
   \end{rules}
-  \caption{Judgement of well-formed structure}
+  \caption{judgment of well-formed structure}
   \label{fig:sig}
 \end{figure}
 We present some examples of recursive types that will be used in future examples.
@@ -753,11 +757,11 @@ We present some examples of recursive types that will be used in future examples
   \[
     \texttt{list} \triangleq \oplus\{\text{nil} : \textbf{1}, \text{cons} : \texttt{nat} \otimes \texttt{list}\}
   \]
-  List of nature numbers is also a choice type of two labels \texttt{nil} and \texttt{cons}.
+  List of natural numbers is also a choice type of two labels \texttt{nil} and \texttt{cons}.
   In the \texttt{cons} label, it contains multiplicative product of \texttt{nat} and \texttt{list}.
   To ensure \texttt{list} is well-defined, we need to have a type definition for \texttt{nat} in the signature. 
 \end{itemize}
-To utilize the recursion process, we add a new process \textbf{call} to activate another process in \cref{fig:extended}.
+To utilize recursing processes, we add a new process expression \textbf{call} to activate another process in \cref{fig:extended}.
 A process can call itself to achieve self recursion.
 \begin{figure}[H]
   \centering
@@ -768,7 +772,7 @@ A process can call itself to achieve self recursion.
   \begin{rules}
     \defrule[call][call]{
       \Sigma_{\text{decl}} \vdash p (y_1, y_2, \ldots, y_m) [x_1, x_2, \ldots, x_n] = P \textbf{ struct} \\
-      \judge{\Gamma}{P}{\Delta}{\Omega}
+      p : ([A_1, A_2, \ldots A_n], [C_1, C_2, \ldots C_m]) \in \Sigma_{\text{decl}}
     }{
       \judge{\Gamma}{\call{p}{y_1, y_2, \ldots, y_m}{x_1, x_2, \ldots, x_n}}{\Delta}{\Omega}
     }\\
@@ -778,6 +782,7 @@ A process can call itself to achieve self recursion.
   \label{fig:extended}
 \end{figure}
 The \textbf{call} process looks up the signature $\Sigma_\text{decl}$ and finds the process defined by identifier $p$.
+Moreover, we need to check the types for each variable matches with the signature of the process.
 There should be no future processes after the \textbf{call}, thus we require process $P$ takes all the channels in $\Gamma$ and $\Delta$.
 The exception handling context $\Omega$ is inherited from the original process. 
 \section{Reduction}
@@ -795,7 +800,7 @@ We first present the standard reduction rules without exceptions in \cref{fig:st
 
 Most of the standard rules represent message reduction. 
 For instance, in \stepref{label-reduction-r}{label-r}, one process sends a label $k$ through channel $a$, and in another process, 
-it waits for a label from $a$ and passes it to a branching continuation. Such two processes can make progress simultaneously. 
+it waits for a label from $a$ and passes it to a branching continuation. Therefore, two processes can make progress simultaneously. 
 As the first process continues to execute the remaining process $P$, the second process chooses process $P_k$ to execute. 
 By the duality of the propositions, each reduction has two versions of rules, one for the right rule and one for the left rule.
 
@@ -806,12 +811,8 @@ The \stepref{spawn}{spawn} rule splits the original object into two process obje
 and the second object contains the original process $Q$. A new channel $a$ is created and put into the relevant context. 
 We require that the channel $a$ is globally fresh to avoid naming conflicts. Moreover, the contexts are split based on the metavariables in each process. 
 According to the static rules, there must be a valid splitting of the context that maintains the typing of the configuration. 
-In the \stepref{call}{call} rule, we assume the signature is well-formed, thus there exists a process declaration for $p$. 
-We find such a definition $p (y_1, y_2, \ldots, y_m) [x_1, x_2, \ldots, x_n] = P$ and execute the process $P$. 
-We can drop a process object when the process is finished. A process is finished if all the channels in the contexts are used, 
-and there are no remaining processes, which is formalized by the \stepref{finish}{end} rule.
 \begin{figure}[H]
-  \begin{alignat}{4}
+  \begin{alignat}{2}
     \label{unit-reduction-r} \textsc{[unit-r]} & ~ 
     \Braket{
       \begin{array}{l}
@@ -819,7 +820,7 @@ and there are no remaining processes, which is formalized by the \stepref{finish
         \procObj{\Gamma, a : \textbf{1}}{\Delta}{\Omega_2}{\recv{a}{(() \Rightarrow P)}}
       \end{array}
       ; \cancelSet
-    } & ~ \longrightarrow & ~ 
+    } \tag*{} \\ ~ \longrightarrow & ~ 
     \Braket{
       \begin{array}{l}
         \procObj{\cdot}{\cdot}{\Omega_1}{\cdot} \\
@@ -834,7 +835,7 @@ and there are no remaining processes, which is formalized by the \stepref{finish
         \procObj{\Gamma}{a : \boldsymbol{\bot}, \Delta}{\Omega_2}{\recv{a}{(() \Rightarrow P)}}
       \end{array}
       ; \cancelSet
-    } & ~ \longrightarrow & ~ 
+    } \tag*{} \\ ~ \longrightarrow & ~ 
     \Braket{
       \begin{array}{l}
         \procObj{\cdot}{\cdot}{\Omega_1}{\cdot} \\
@@ -849,7 +850,7 @@ and there are no remaining processes, which is formalized by the \stepref{finish
         \procObj{\Gamma_2, c : A \otimes B}{\Delta_2}{\Omega_2}{\recv{c}{(x \Rightarrow P(x))}}
       \end{array}
       ; \cancelSet
-    } & ~ \longrightarrow & ~ 
+    } \tag*{} \\ ~ \longrightarrow & ~ 
     \Braket{
       \begin{array}{l}
         \procObj{\Gamma_1}{c : B, \Delta_1}{\Omega_1}{P} \\
@@ -864,13 +865,13 @@ and there are no remaining processes, which is formalized by the \stepref{finish
           \procObj{\Gamma_2}{c : A \pare B, \Delta_2}{\Omega_2}{\recv{c}{(x \Rightarrow P(x))}}
         \end{array}
         ; \cancelSet
-      } & ~ \longrightarrow & ~ 
+      } \tag*{} \\ ~ \longrightarrow & ~ 
       \Braket{
         \begin{array}{l}
           \procObj{\Gamma_1}{c : B, \Delta_1}{\Omega_1}{P} \\
           \procObj{\Gamma_2, c : B}{\Delta_2}{\Omega_2}{P(a)}
         \end{array}
-        ; S\cancelSet
+        ; \cancelSet
     } \tag*{} \\
     \label{label-reduction-r} \textsc{[label-r]} & ~ 
       \Braket{
@@ -879,7 +880,7 @@ and there are no remaining processes, which is formalized by the \stepref{finish
           \procObj{\Gamma_2, a : \oplus\{l : A_l\}_{l \in L}}{\Delta_2}{\Omega_2}{\recv{a}{(l \Rightarrow P_l)_{l \in L}}}
         \end{array}
         ; \cancelSet
-      } & ~ \longrightarrow & ~ 
+      } \tag*{} \\ ~ \longrightarrow & ~ 
       \Braket{
         \begin{array}{l}
           \procObj{\Gamma_1}{a : A_k, \Delta_1}{\Omega_1}{P} \\
@@ -894,7 +895,7 @@ and there are no remaining processes, which is formalized by the \stepref{finish
           \procObj{\Gamma_2}{a : \&\{l : A_l\}_{l \in L}, \Delta_2}{\Omega_2}{\recv{a}{(l \Rightarrow P_l)_{l \in L}}}
         \end{array}
         ; \cancelSet
-      } & ~ \longrightarrow & ~ 
+      } \tag*{} \\ ~ \longrightarrow & ~ 
       \Braket{
         \begin{array}{l}
           \procObj{\Gamma_1, a : A_k}{\Delta_1}{\Omega_1}{P} \\
@@ -909,7 +910,7 @@ and there are no remaining processes, which is formalized by the \stepref{finish
           \procObj{\Gamma}{a : A, \Delta}{\Omega_2}{P(a)}
         \end{array}
         ; \cancelSet
-      } & ~ \longrightarrow & ~ 
+      } \tag*{} \\ ~ \longrightarrow & ~ 
       \Braket{
         \begin{array}{l}
           \procObj{\cdot}{\cdot}{\Omega_1}{\cdot} \\
@@ -920,10 +921,12 @@ and there are no remaining processes, which is formalized by the \stepref{finish
     \label{spawn} \textsc{[spawn]} & ~ 
       \Braket{
         \begin{array}{l}
-          \procObj{\Gamma_1, \Gamma_2}{\Delta_1, \Delta_2}{\Omega}{\spawn{P}{Q}{x}}
+          \procObj{\Gamma_1, \Gamma_2}{\Delta_1, \Delta_2}{\Omega}{\spawn{P}{Q}{x}}\\
+          \judge{\Gamma_1}{P(x)}{x : A, \Delta_1}{\cdot}\\
+          \judge{\Gamma_2, x : A}{Q(x)}{\Delta_2}{\Omega}
         \end{array}
         ; \cancelSet
-      } & ~ \longrightarrow & ~ 
+      } \tag*{} \\ ~ \longrightarrow & ~ 
       \Braket{
         \begin{array}{l}
           \procObj{\Gamma_1}{a : A, \Delta_1}{\cdot}{P(a)} \\
@@ -937,7 +940,7 @@ and there are no remaining processes, which is formalized by the \stepref{finish
           \procObj{\Gamma}{\Delta}{\Omega}{\call{p}{y_1, y_2, \ldots, y_m}{x_1, x_2, \ldots, x_n}}
         \end{array}
         ; \cancelSet
-      } & ~ \longrightarrow & ~ 
+      } \tag*{} \\ ~ \longrightarrow & ~ 
       \Braket{
         \begin{array}{l}
           \procObj{\Gamma}{\Delta}{\Omega}{P}
@@ -950,7 +953,7 @@ and there are no remaining processes, which is formalized by the \stepref{finish
           \procObj{\cdot}{\cdot}{\cdot}{\cdot}
         \end{array}
         ; \cancelSet
-      } & ~ \longrightarrow & ~ 
+      } \tag*{} \\ ~ \longrightarrow & ~ 
       \Braket{
         \begin{array}{l}
           \cdot
@@ -962,6 +965,12 @@ and there are no remaining processes, which is formalized by the \stepref{finish
   \caption{Standard reductions of configuration}
   \label{fig:stdreduction}
 \end{figure}
+In the \stepref{call}{call} rule, we assume the signature is well-formed, thus there exists a process declaration for $p$. 
+We find such a definition $p (y_1, y_2, \ldots, y_m) [x_1, x_2, \ldots, x_n] = P$ and execute the process $P$. 
+We can drop a process object when the process is finished and use $\cdot$ to represent an empty process. 
+It must be the case for any empty process, there are no remaining channels unused.
+The formalization is referred to the \stepref{finish}{end} rule.
+
 Now let's examine the reduction rules in channel cancellation as listed in \cref{fig:cancelreduction}.
 The cancellation process removes a channel from the context and adds it to the cancellation set.
 We have two different rules for right and left cancellation for the channel $a$ in the contexts $\Gamma$ and $\Delta$, respectively.
@@ -975,14 +984,14 @@ The prefix of a process is the channel that the process directly communicates wi
 If the process is not included in the above list, then it does not have a prefix channel.
 Cancelling a process is achieved by replacing the process with a process that cancels all the channels in the context. 
 \begin{figure}[H]
-  \begin{alignat}{4}
+  \begin{alignat}{2}
     \label{cancelR} \textsc{[cancel-r]} & ~ 
     \Braket{
       \begin{array}{l}
         \procObj{\Gamma}{a : A, \Delta}{\Omega}{\cancel{a}; P}
       \end{array}
       ; \cancelSet
-    } & ~ \longrightarrow & ~ 
+    } \tag*{} \\ ~ \longrightarrow & ~ 
     \Braket{
       \begin{array}{l}
         \procObj{\Gamma}{\Delta}{\Omega}{P}
@@ -995,7 +1004,7 @@ Cancelling a process is achieved by replacing the process with a process that ca
         \procObj{\Gamma, a : A}{\Delta}{\Omega}{\cancel{a}; P}
       \end{array}
       ; \cancelSet
-    } & ~ \longrightarrow & ~ 
+    } \tag*{} \\ ~ \longrightarrow & ~ 
     \Braket{
       \begin{array}{l}
         \procObj{\Gamma}{\Delta}{\Omega}{P}
@@ -1009,7 +1018,7 @@ Cancelling a process is achieved by replacing the process with a process that ca
         \text{prefix}(P) = a
       \end{array}
       ; \cancelSet \cup \{a\}
-    } & ~ \longrightarrow & ~ 
+    } \tag*{} \\ ~ \longrightarrow & ~ 
     \Braket{
       \begin{array}{l}
         \procObj{\Gamma}{\Delta}{\Omega}{\cancel{\Gamma}; \cancel{\Delta}} \\
@@ -1023,7 +1032,7 @@ Cancelling a process is achieved by replacing the process with a process that ca
         \text{prefix}(P) = a
       \end{array}
       ; \cancelSet \cup \{a\}
-    } & ~ \longrightarrow & ~ 
+    } \tag*{} \\ ~ \longrightarrow & ~ 
     \Braket{
       \begin{array}{l}
         \procObj{\Gamma}{\Delta}{\Omega}{\cancel{\Gamma}; \cancel{\Delta}}
@@ -1042,14 +1051,14 @@ The exception handling process $Q$ uses channel $a$ to wait for exception activa
 When a process raises an exception, we activate the exception handling by creating a new process object that sends a label \texttt{act} through channel $a$. 
 Similarly, when a process finishes without any exceptions and there is an exception handling channel, we send a label \texttt{sil} through channel $a$ to terminate the exception handling process.
 \begin{figure}[H]
-  \begin{alignat}{4}
+  \begin{alignat}{2}
     \label{try-catch} \textsc{[try-catch]} & ~ 
     \Braket{
       \begin{array}{l}
         \procObj{\Gamma}{\Delta}{\Omega}{\trycatch{P}{Q}{y}}
       \end{array}
       ; \cancelSet
-    } & ~ \longrightarrow & ~ 
+    } \tag*{} \\ ~ \longrightarrow & ~ 
     \Braket{
       \begin{array}{l}
         \procObj{\Gamma_1}{\Delta_1, c : A}{a : \text{exn}}{P(c)} \\
@@ -1063,7 +1072,7 @@ Similarly, when a process finishes without any exceptions and there is an except
         \procObj{\Gamma}{\Delta}{a : \text{exn}}{\craise{P}}
       \end{array}
       ; \cancelSet
-    } & ~ \longrightarrow & ~ 
+    } \tag*{} \\ ~ \longrightarrow & ~ 
     \Braket{
       \begin{array}{l}
         \procObj{\Gamma}{\Delta}{\cdot}{P} \\
@@ -1077,7 +1086,7 @@ Similarly, when a process finishes without any exceptions and there is an except
         \procObj{\cdot}{\cdot}{a : \text{exn}}{\cdot}
       \end{array}
       ; \cancelSet
-    } & ~ \longrightarrow & ~ 
+    } \tag*{} \\ ~ \longrightarrow & ~ 
     \Braket{
       \begin{array}{l}
         \procObj{\cdot}{a : \text{exn}}{\cdot}{\send{a}{\text{sil}}; \send{a}{()}}
@@ -1089,6 +1098,7 @@ Similarly, when a process finishes without any exceptions and there is an except
   \caption{Exception reductions of configuration}
   \label{fig:exnreduction}
 \end{figure}
+\newpage
 \section{Safety theorems}
 To ensure the safety of the system, we first need to show the typing of the configuration is preserved as the computation proceeds.
 Such property is stated in \cref{thm:preservation}.
@@ -1103,20 +1113,21 @@ We will show a few interesting cases to demonstrate how proof proceeds.
   We induct on the forms of reduction.
   \begin{itemize}
     \item [\stepref{spawn}{spawn}] In this case, $\config = (\config_L, \procObj{\Gamma}{\Delta}{\Omega}{\spawn{P}{Q}{x}}, \config_R)$ for some $\config_L$ and $\config_R$. 
-    Moreover, we assume the following typing judgements hold.
+    Moreover, we assume the following typing judgments hold.
     \begin{align*}
       \Phi & \vdash \config_L :: \Phi_L \\
       \Phi_L & \vdash \procObj{\Gamma}{\Delta}{\Omega}{\spawn{P}{Q}{x}} :: \Phi_R\\
       \Phi_R & \vdash \config_R :: \Phi'
     \end{align*}
-    We can split the context $\Gamma$ and $\Delta$ into $\Gamma_1, \Gamma_2$ and $\Delta_1, \Delta_2$ based on the meta variables in $P$ and $Q$.
+    We can split the context $\Gamma$ and $\Delta$ into $\Gamma_1, \Gamma_2$ and $\Delta_1, \Delta_2$ based on the condition given in the reduction rule
+    such that we can reconstruct the typing judgment for the configuration successfully.
     By the reduction rule, we know
     \begin{align*}
       \config' &= \config_L, \procObj{\Gamma_1}{a : A, \Delta}{\cdot}{P(a)}, \procObj{\Gamma_2, a : A}{\Delta_2}{\Omega}{Q(a)}, \config_R \\
       \cancelSet' &= \cancelSet
     \end{align*}
     where $a$ is a globally fresh channel.
-    To build the typing judgement for the new state, we apply inversion to the typing 
+    To build the typing judgment for the new state, we apply inversion to the typing 
     \[
       \Phi_L \vdash \procObj{\Gamma}{\Delta}{\Omega}{\spawn{P}{Q}{x}} :: \Phi_R
     \]
@@ -1125,20 +1136,20 @@ We will show a few interesting cases to demonstrate how proof proceeds.
       \Phi_L &= (\Phi_L', \Gamma_1, \Gamma_2) \\
       \Gamma_1 & \vdash P(a) :: \Delta_1, a : A; \cdot \\
       \Gamma_2, a : A & \vdash Q(a) :: \Delta_2; \Omega \\
-      \Phi_R &= (\Phi_L', \Delta_1, \Delta_2)
+      \Phi_R &= (\Phi_L', \Delta_1, \Delta_2, \Omega)
     \end{align*}
     Now we can construct a typing derivation for $\config'$
     \begin{align*}
       \Phi & \vdash \config_L :: \Phi_L \\
       \Phi_L &= (\Phi_L', \Gamma_1, \Gamma_2) \\
       \Phi_L', \Gamma_1, \Gamma_2 & \vdash \procObj{\Gamma_1}{a : A, \Delta}{\cdot}{P(a)} :: (\Phi_L', \Gamma_2, \Delta_1, a : A) \\
-      \Phi_L', \Gamma_2, \Delta_1, a : A & \vdash \procObj{\Gamma_2, a : A}{\Delta_2}{\Omega}{Q(a)} :: (\Phi_L', \Delta_1, \Delta_2) \\
-      \Phi_R &= (\Phi_L', \Delta_1, \Delta_2) \\
+      \Phi_L', \Gamma_2, \Delta_1, a : A & \vdash \procObj{\Gamma_2, a : A}{\Delta_2}{\Omega}{Q(a)} :: (\Phi_L', \Delta_1, \Delta_2, \Omega) \\
+      \Phi_R &= (\Phi_L', \Delta_1, \Delta_2, \Omega) \\
       \Phi_L & \vdash \config_R :: \Phi'
     \end{align*}
     This concludes this case of type preservation.
   \item [\stepref{cancelL}{cancel-l}] In this case, $\config = (\config_L, \procObj{\Gamma, a : A}{\Delta}{\Omega}{\cancel{a}; P}, \config_R)$.
-    We assume the following typing judgements hold.
+    We assume the following typing judgments hold.
     \begin{align*}
       \Phi & \vdash \config_L :: \Phi_L \\
       \Phi_L & \vdash \procObj{\Gamma, a : A}{\Delta}{\Omega}{\cancel{a}; P} :: \Phi_R \\
@@ -1149,7 +1160,7 @@ We will show a few interesting cases to demonstrate how proof proceeds.
       \config' &= \config_L, \procObj{\Gamma}{\Delta}{\Omega}{P}, \config_R \\
       \cancelSet' &= \cancelSet \cup \{a\}
     \end{align*}
-    We can apply inversion to the typing judgement
+    We can apply inversion to the typing judgment
     \[
       \Phi_L \vdash \procObj{\Gamma, a : A}{\Delta}{\Omega}{\cancel{a}; P} :: \Phi_R
     \]
@@ -1157,44 +1168,43 @@ We will show a few interesting cases to demonstrate how proof proceeds.
     \begin{align*}
       \Phi_L & = (\Phi_L', \Gamma) \\
       \Gamma & \vdash P :: \Delta; \Omega \\
-      \Phi_R & = (\Phi_L', \Delta)
+      \Phi_R & = (\Phi_L', \Delta, \Omega)
     \end{align*}
     Now we can construct a typing derivation for $\config'$
     \begin{align*}
       \Phi & \vdash \config_L :: \Phi_L \\
       \Phi_L & = (\Phi_L', \Gamma) \\
-      \Phi_L', \Gamma & \vdash \procObj{\Gamma}{\Delta}{\Omega}{P} :: (\Phi_L', \Delta) \\
-      \Phi_R & = (\Phi_L', \Delta) \\
+      \Phi_L', \Gamma & \vdash \procObj{\Gamma}{\Delta}{\Omega}{P} :: (\Phi_L', \Delta, \Omega) \\
+      \Phi_R & = (\Phi_L', \Delta, \Omega) \\
       \Phi_R & \vdash \config_R :: \Phi'
     \end{align*}
     This concludes this case of type preservation.
   \end{itemize}
 \item [\stepref{silence}{silent}] In this case, $\config = (\config_L, \procObj{\cdot}{\cdot}{a : \text{exn}}{\cdot}, \config_R)$.
-  We assume the following typing judgements hold.
+  We assume the following typing judgments hold.
   \begin{align*}
     \Phi & \vdash \config_L :: \Phi_L \\
     \Phi_L & \vdash \procObj{\cdot}{\cdot}{a : \text{exn}}{\cdot} :: \Phi_R \\
     \Phi_R & \vdash \config_R :: \Phi'
   \end{align*}
-  Applying the inversion, we must have $\Phi_R = \Phi_L$. By the reduction rule, we know
+  Applying the inversion, we must have $\Phi_R = \Phi_L, a : \text{exn}$. By the reduction rule, we know
   \begin{align*}
     \config' &= \config_L, \procObj{\cdot}{a : \text{exn}}{\cdot}{\send{a}{\text{sil}}; \send{a}{()}}, \config_R \\
     \cancelSet' &= \cancelSet
   \end{align*}
-  Since channel $a$ has type \texttt{exn}, we can safely omit the explicit usage of $a : \text{exn}$ and 
-  construct a typing derivation for $\config'$ as
+  We can construct a typing derivation for $\config'$ as
   \begin{align*}
     \Phi & \vdash \config_L :: \Phi_L \\
-    \Phi_L & \vdash \procObj{\cdot}{a : \text{exn}}{\cdot}{\send{a}{\text{sil}}; \send{a}{()}} :: \Phi_L \\
-    \Phi_R & = \Phi_L \\
+    \Phi_L & \vdash \procObj{\cdot}{a : \text{exn}}{\cdot}{\send{a}{\text{sil}}; \send{a}{()}} :: \Phi_L, a : \text{exn} \\
+    \Phi_R & = \Phi_L, a : \text{exn} \\
     \Phi_R & \vdash \config_R :: \Phi'
   \end{align*}
   This concludes this case of type preservation.
 \end{proof}
-Showing every reduction terminates is not possible in our system because of recursion. 
+Showing every reduction sequence terminates is not possible in our system because of recursion. 
 For instance, a process \texttt{foo} can call itself such that the execution will never terminate.
-However, we are able to show that well-typed configurations will not get stuck.
-In other words, a configuration is either final, which means all process objects attempt to communicate along an external channel,
+However, we are able to show that well-typed configurations never get stuck.
+In other words, a configuration is either \textit{final}, which means all process objects attempt to communicate along an external channel,
 or it can reduce to another configuration. We formalize this property in \cref{thm:progress}.
 \begin{theorem}[Deadlock Freedom]\label{thm:progress}
   Given a state $\langle \config; \cancelSet \rangle$ such that $\cdot \vdash \config :: \Phi$, then either $\config$ is final, or 
@@ -1216,23 +1226,20 @@ In other words, if $\config$ satisfies $\cdot \vdash \config :: \Phi$, then $\co
     \Phi & = (\Phi, \Delta) \\
     \cdot & \vdash \config :: \Phi
   \end{align*}
-  for a process object $\procObj{\Gamma}{\Delta}{\Omega}{P}$ and $\Phi, \Phi'$.
+  for a process object $\procObj{\Gamma}{\Delta}{\Omega}{P}$ and $\Phi, \Phi'$. By induction hypothesis,
+  we know that $\config_L$ is either final or can reduce to another configuration $\config_L'$ with some cancelled set $\cancelSet'$.
+  If it reduces to $\langle \config_L'; \cancelSet' \rangle$, then $\langle \config; \cancelSet \rangle \longrightarrow 
+  \langle (\config_L', \procObj{\Gamma}{\Delta}{\Omega}{P}); \cancelSet' \rangle$.
   
-  Now we distinguish the cases by the structure of process $P$.
+  Now assume $\config_L$ is final, we distinguish the cases by the structure of process $P$.
   \begin{itemize}
-    \item [\ruleref{cut}] In this case $P = \spawn{P_1}{P_2}{x}$. By induction hypothesis,
-    we know that $\config_L$ is either final or can reduce to another configuration $\config_L'$ with some cancelled set $\cancelSet'$.
-    If it reduces to $\langle \config_L'; \cancelSet' \rangle$, then $\langle \config; \cancelSet \rangle \longrightarrow 
-    \langle (\config_L', \procObj{\Gamma}{\Delta}{\Omega}{P}); \cancelSet' \rangle$.
-    Otherwise, by reduction, we know $\langle \config; \cancelSet \rangle \longrightarrow
+    \item [\ruleref{cut}] In this case, $P = \spawn{P_1}{P_2}{x}$. By reduction, we know 
+    $\langle \config; \cancelSet \rangle \longrightarrow
     \langle (\config_L, \procObj{\Gamma_1}{a : A, \Delta_1}{\cdot}{P_1(a)}, \procObj{\Gamma_2, a : A}{\Delta_2}{\Omega}{P_2(a)}); \cancelSet \rangle$
-    with a proper split of the context.
+    with a proper split of the context ensured by the condition.
     \item [\ruleref{weakenL}] In this case $P = \cancel{a}; P'$ and $\Gamma = \Gamma', a : A$. 
     For simplicity, we assume $\config_L$ is final.
     By reduction, we know $\langle \config; \cancelSet \rangle \longrightarrow \langle (\config_L, \procObj{\Gamma'}{\Delta}{\Omega}{P'}); \cancelSet \cup \{a\} \rangle$.
-    \item [\ruleref{nothing}-exn] In this case $P = \cdot$ while $\Omega = a :$ \texttt{exn}.
-    For simplicity, we assume $\config_L$ is final.
-    By reduction, we know $\langle \config; \cancelSet \rangle \longrightarrow \langle (\config_L, \procObj{\cdot}{a : \text{exn}}{\cdot}{\send{a}{\text{sil}}; \send{a}{()}}); \cancelSet \rangle$.
   \end{itemize}
 \end{proof}
 \chapter{Interpreter}
@@ -1240,29 +1247,28 @@ Experimenting with the proposed type system, we implement a simple interpreter i
 We name the source language EPass, an abbreviation for Exceptional Message Passing. 
 We don't have a target language; instead, we simulate the execution in OCaml and make observations that output to the console screen. 
 There are four main phases in the interpreter: parsing, elaboration, type checking, and runtime simulation.
-A complete implementation of the interpreter can be found \href{https://github.com/cekington/ePass}{here}.
+A complete implementation of the interpreter can be found \href{https://github.com/cekington/ePass}{here}\footnote{https://github.com/cekington/ePass}.
 \section{Grammar} 
 We present the grammar of the EPass language in \cref{sec:grammar}. There are a few remarks about the grammar.
 \begin{itemize}
   \item We use \texttt{type t = } $\ldots$ for type definition and \texttt{proc p} $(\ldots)\ [\ldots]$ \texttt{=} $\ldots$ for process definition.
   \texttt{exec} $p$ executes a closed process, a process without any input channels, and prints out the observation of the external channels. 
   \item We keep $\multimap$ as the linear implication in our language. Although we do not include it in our system, we have shown $A \multimap B$ can be derived in our system.
-  Thus, $A \multimap B$ is viewed as a syntax sugar that is elaborated to $A^\bot \pare B$ during elaboration.
+  Thus, $A \multimap B$ is viewed as a syntactic sugar that is elaborated to $A^\bot \pare B$.
   We do not include $\boldsymbol{\bot}$, since we can derive it by putting $\textbf{1}$ in the other side of the context.
   \item There is not a suitable Unicode character to represent $\pare$. We use @ to represent the multiplicative disjunction.
   \item We modify the try-catch process such that creating a new channel is not necessary. 
-  This can be used when the main process and the exception handling process are independent with each other.
+  This can be used when the main process and the exception handling process are independent from each other.
   Therefore, $\trycatch{P}{Q}{y}$ and $\textbf{try}\ P \textbf{ catch } Q$ are both valid try-catch processes.
-  \item We distinguish identity and label by putting a ' character in front of the label. So the type \texttt{nat} in EPass looks like
+  \item We distinguish identitiers and labels by putting a ' character in front of labels. So the type \texttt{nat} looks like
   \[
     \texttt{nat} \triangleq \oplus\{\text{'zero} : 1 , \text{'succ} : \texttt{nat}\}
   \]
 \end{itemize}
 As checked by Menhir, a LR$(1)$ parser generator for OCaml, there are no ambiguity in the grammar.
 So every source code that follows the grammar can be parsed into the external language properly.
-The syntax of the external language can be found in \cref{sec:el}.
 \section{Elaboration}
-During the elaboration, we transform the external language into internal language, whose syntax is in \cref{sec:il}. There are two major goals in this phase.
+During the elaboration, we transform the external language into internal language.
 \begin{itemize}
   \item We first remove the recursive definitions for types in the external language, which means types have at most one layer.
   This helps to simplify comparing the equality of two types. When we compare two types, we need to compare the outermost layer,
@@ -1272,7 +1278,7 @@ During the elaboration, we transform the external language into internal languag
   \lstinputlisting{code/elab-before.eps}
   will be elaborated to the internal language as
   \lstinputlisting{code/elab-after.eps}
-  Besides type elaboration, we also remove the usage of linear application and make distinction between allocated channels and channel variables.
+  Besides type elaboration, we also remove the usage of linear implication and distinguish between allocated channels and channel variables.
   Before executing any processes, all the channels should be variables.
   \item After elaboration, we ensure that every definition is well-formed by checking $\Sigma_\text{decl} \vdash \Sigma_\text{defn}$. 
   We extract the declarations by scanning the whole program and build the definitions during the elaboration. 
@@ -1346,7 +1352,7 @@ As we can see, in \texttt{choice\_true} process, the \texttt{left} channel $(\# 
 The output is reversed in \texttt{choice\_false} process, which matches with the expected behavior.
 \section{Exception example}
 The next example demonstrates how exceptions can be raised and handled. 
-A subtraction of \texttt{n1} and \texttt{n2} in natural number is not defined if 
+The subtraction of \texttt{n1} and \texttt{n2} in natural numbers is not defined if 
 \texttt{n2} is bigger than \texttt{n1}. We deal such case by raising an exception and dropping all the unused resources.
 \lstinputlisting{code/subtract.eps}
 We provide a wrapper process \texttt{wrap\_subtract} to invoke the \texttt{subtract} process, 
@@ -1355,15 +1361,16 @@ Since the process is for example usage, we don't perform any significant action 
 Instead, we simply return $0$ from another external channel \texttt{n\_exn}.
 
 Information can also be exchanged between the main process and the exception handling process by creating a new channel. 
-For instance, when zipping two lists and the lengths of the lists are not equal, 
-the first attempt to zip will raise an exception and pass the difference in lengths of the lists to the second attempt, 
+A comprehensive example will be zipping two lists of different length.
+The first attempt to call the process zip will raise an exception and pass the difference in lengths of the lists to the second attempt, 
 which handles the exception. The second attempt can then adjust for the length difference and reattempt zipping the remaining parts of the lists.
+Such code can be found in \cref{sec:exnzip}.
 \chapter{Other features}
 In this chapter, we delve into advanced features and remove some constraints in the system to enhance the language's 
 capabilities in various situations. We study uncaught exceptions and non-exhaustive matching in our system. 
-To accommodate these changes, we revisit the typing judgement and the reduction rules. Moreover, we restate the safety theorem to align with the new system. 
+To accommodate these changes, we revisit the typing judgment and the reduction rules. Moreover, we restate the safety theorem to align with the new system. 
 Related work and future plans are also included in the last part of this chapter.
-\section{Uncaught exception}
+\section{Uncaught exception} \label{sec:uncaught}
 In most programming languages, uncaught exceptions cause runtime crashes and are reported from the top level. For example, 
 the following expression
 \begin{minted}{ocaml}
@@ -1389,10 +1396,10 @@ We modify the \ruleref{raise} rule.
 \end{rules}
 We relax the constraint that $\Omega$ must be a singleton set. In \ruleref{raise'} rule, $\Omega$ can be either an empty set or a singleton set.
 The premise does not change since $\craise{P}$ uses the exception channel no matter whether it is in $\Omega$ or not.
-A key observation is that under such relaxation, judgement $\judge{\Gamma}{P}{\Delta}{x : \text{exn}}$ is provable if and only if
-$\judge{\Gamma}{P}{\Delta}{\cdot}$. Thus, it seems that the $\Omega$ context is useless and can be omitted in the typing judgement.
-However, we can utilize $\Omega$ during the type checking phase and output warning information
-if an exception does not have direct handling process. For instance, the following code 
+A key observation is that under such relaxation, judgment $\judge{\Gamma}{P}{\Delta}{x : \text{exn}}$ is provable if and only if
+$\judge{\Gamma}{P}{\Delta}{\cdot}$. Thus, it seems that the $\Omega$ context is useless and can be omitted in the typing judgment.
+However, we can utilize $\Omega$ during the type checking phase and output a warning message
+if an exception does not have a direct handling process. For instance, the following code 
 \begin{lstlisting}
 proc foo (x : 1) [] = 
   raise (cancel x)
@@ -1400,11 +1407,11 @@ proc foo (x : 1) [] =
 will output the following message to the console.
 \begin{minted}{text}
   Warning: In process foo, raise (cancel x) does not have 
-  its corresponding exceptional handler
+  a corresponding exceptional handler
 \end{minted}
 However, the warning message is conservative in some sense. For example,
 if another process \texttt{bar} calls the process \texttt{foo}. No matter whether \texttt{bar} catches the exception or not,  
-the warning message still prints to the console. Only direct caught exceptions like
+the warning message still prints to the console. Only handling exceptions directly like
 \begin{lstlisting}
 proc foo' (x : 1, y : 1) [] =
   try raise (cancel x) catch send y ()
@@ -1438,7 +1445,7 @@ the program will abort. We define an error configuration $\Lambda$ in \cref{fig:
       ; \cancelSet
     } \tag*{}
   \end{alignat}
-  \caption{Extended syntax, typing judgement, and reduction of the configuration}
+  \caption{Extended syntax, typing judgment, and reduction of the configuration}
   \label{fig:abortcfg}
 \end{figure}
 The typing judgment for the error configuration does not matter. Therefore, $\Lambda$ is well-typed for any input context $\Phi$ and output context $\Phi'$.
@@ -1454,7 +1461,13 @@ we know such configuration is still well-typed by \ruleref{error}. We revise \cr
   Given a state $\langle \config; \cancelSet \rangle$ such that $\cdot \vdash \config :: \Phi$, then either
   $\config$ is final, $\langle \config; \cancelSet \rangle \longrightarrow \langle \Lambda; \cancelSet \rangle$ or $\langle \config; \cancelSet \rangle \longrightarrow \langle \config'; \cancelSet' \rangle$ for some $\config', \cancelSet'$.
 \end{theorem}
-The proof of this theorem extends the original proof by adding the case of uncaught exception. The proof is trivial and thus omitted.
+\begin{proof}
+  The proof of this theorem extends the original proof by adding the case of uncaught exception.
+  \begin{itemize}
+    \item [\ruleref{raise'}] In this case $P = \craise{P'}$ and $\Omega = \cdot$.
+    By reduction, we know $\langle \config; \cancelSet \rangle \longrightarrow \langle \Lambda; \cancelSet \rangle$.
+  \end{itemize}
+\end{proof}
 
 In the interpreter, we abort the program simulation when we face with an uncaught exception. For example, in the following tiny example,
 \begin{lstlisting}
@@ -1479,7 +1492,7 @@ we get the following message from the console.
 It is worth noting that execution of processes are independent of each other, thus a crash in \texttt{foo1} does not affect 
 the execution of \texttt{foo2}. The next feature builds on the idea of uncaught exceptions.
 
-\section{Non-exhaustive match}
+\section{Non-exhaustive match}\label{sec:nonexhaust}
 Pattern matching is commonly used for matching on algebraic data types in functional programming languages. The label message reduction
 in our system resembles pattern matching. For instance, when receiving messages from a channel of type \texttt{nat},
 we need to provide a branch for each label in the type definition. Currently, we require that every label must have its own branch
@@ -1487,7 +1500,8 @@ as restricted by the \ruleref{orL} and \ruleref{withR} rules.
 Non-exhaustive matching is a common warning or error in most programming languages.
 Such matching will halt program execution if the expression does not match any of the branches.
 A good programming practice is to use a wildcard case to handle all remaining, possibly uninteresting cases.
-We implement the idea of non-exhaustive matching in our system by raising an exception when a label does not have its corresponding branch.
+However, it is difficult to achieve with affine typing.
+We choose to represent non-exhaustive matching by raising an exception when a label does not have its corresponding branch.
 To relax such constraints, we modify the \ruleref{orL} and \ruleref{withR} rules in \cref{fig:nonexhaustive}.
 The branching label collection $L'$ is a subset of the original label collection $L$, which means in the original rule, $L' = L$.
 \begin{figure}[H]
@@ -1504,7 +1518,7 @@ The branching label collection $L'$ is a subset of the original label collection
       (\forall l \in L')
     }{\judge{\Gamma}{\recv{x}{(l \Rightarrow P_l)_{l \in L'}}}{x : \&\{l : A_l\}_{l \in L}, \Delta}{\Omega}}
   \end{rules}
-  \caption{Refined typing judgement for non-exhaustive match}
+  \caption{Revisited typing judgment allowing non-exhaustive match}
   \label{fig:nonexhaustive}
 \end{figure}
 The original reduction rules for labels no longer hold. In \stepref{label-reduction-l}{label-l}
@@ -1512,7 +1526,7 @@ and \stepref{label-reduction-r}{label-r} rules, we need to ensure that $k \in L$
 To handle the possibility of $k \not\in L$, we add two new reduction rules in \cref{fig:nonexreduction}.
 The intended behavior is to raise an exception and channel all channels prepared for the \textbf{recv} process.
 \begin{figure}[H]
-  \begin{alignat}{4}
+  \begin{alignat}{2}
     \label{label-reduction-r'} \textsc{[label-r']} & ~ 
       \Braket{
         \begin{array}{l}
@@ -1521,7 +1535,7 @@ The intended behavior is to raise an exception and channel all channels prepared
         \end{array}
         (k \not\in L)
         ; \cancelSet
-      } & ~ \longrightarrow & ~ 
+      } \tag*{} \\ ~ \longrightarrow & ~ 
       \Braket{
         \begin{array}{l}
           \procObj{\Gamma_1}{a : A_k, \Delta_1}{\Omega_1}{P} \\
@@ -1537,7 +1551,7 @@ The intended behavior is to raise an exception and channel all channels prepared
         \end{array}
         (k \not\in L)
         ; \cancelSet
-      } & ~ \longrightarrow & ~ 
+      } \tag*{} \\ ~ \longrightarrow & ~ 
       \Braket{
         \begin{array}{l}
           \procObj{\Gamma_1, a : A_k}{\Delta_1}{\Omega_1}{P} \\
@@ -1567,13 +1581,13 @@ The output of the program is as follows.
 \end{minted}
 A warning message is printed for the process \texttt{choose} because the label \texttt{'b} is missing.
 In the process \texttt{test\_choose2}, an uncaught exception is raised because the label send through channel \texttt{c} is \texttt{'b}
-and the program is aborted. Such feature can also be used to simulate process assertion. 
+and the program is aborted. Such feature can also be used to simulate a process assertion. 
 If we are certain that some label should never be sent through a channel, for instance \texttt{'true} or \texttt{'false},
-we can omit such cases in branching.
+we can omit such cases in branching. We refer to an example of implementing sets using tries in \cref{sec:trie}.
 \section{Related work and future work}
 We divide the related work into two parts: channel cancellation and exception handling.
 
-Channel cancellation was first proposed in Affine session that models channel interruption.
+Channel cancellation was first proposed to model channel interruption \cite{Mos2014}.
 We utilize this idea and refine it as the proof term of explicit weakening rules.
 The refinement provides a better way to understand channel cancellation
 and connects the relation between processed and sequent proof terms.
@@ -1590,18 +1604,19 @@ In other words, how to pass exceptions from one mode to another mode while both 
 maintain the safety of the language. Meanwhile, previous works model data layout using
 semi-axiomatic sequent calculus \cite{DeYoung2023}. Memory access errors such as
 writing to a freed memory cell or dereferencing an invalid address. In future work,
-we plan to work under a shared memory interpretation and study the exceptions.
+we plan to study exceptions under a shared memory interpretation.
 
 \appendix
-\chapter{EPass} 
+\chapter{EPass and example code} 
 \section{Grammar} \label{sec:grammar}
 \inputminted{text}{code/grammar.txt}
-\section{External language} \label{sec:el}
-\inputminted{ocaml}{code/el.ml}
-\section{Internal language} \label{sec:il}
-\inputminted{ocaml}{code/il.ml}
-\backmatter
+\newpage
+\section{List zip} \label{sec:exnzip}
+\lstinputlisting{code/listzip.eps}
 
+\section{Set as trie} \label{sec:trie}
+\lstinputlisting{code/trie.eps}
+\backmatter
 \printbibliography
 
 \end{document}
