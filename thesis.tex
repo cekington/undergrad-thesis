@@ -24,6 +24,8 @@
 \usepackage{subcaption}
 \usepackage{hyperref}
 
+\hypersetup{colorlinks,linkcolor={red},citecolor={black},urlcolor={red}}  
+
 \setlrmarginsandblock{1.25in}{*}{1}
 \setulmarginsandblock{1.5in}{*}{1}
 \setheaderspaces{*}{2\onelineskip}{*}
@@ -786,9 +788,9 @@ Moreover, we need to check the types for each variable matches with the signatur
 There should be no future processes after the \textbf{call}, thus we require process $P$ takes all the channels in $\Gamma$ and $\Delta$.
 The exception handling context $\Omega$ is inherited from the original process. 
 \section{Reduction}
-In future discussions, we'll distinguish channels allocated using $a,b,c,\ldots$ for newly created channels 
-and use $x,y,z,\ldots$ for channel variables that require substitution by another allocated channel. 
-For instance, $\spawn{P}{Q}{a}$ should not be allowed since channel $a$ should be a variable instead of an allocated channel. 
+In future discussions, we will distinguish channels using $a,b,c,\ldots$ for allocated ones 
+and use $x,y,z,\ldots$ for ones are variables that require substitution during the execution. 
+For instance, $\spawn{P}{Q}{a}$ should not be allowed since channel $a$ should be a variable instead of a created channel. 
 Similarly, $\cancel{x}$ is invalid since we cannot cancel a channel that is not allocated.
 
 The reduction of the configuration is based on linear inference. 
@@ -1608,12 +1610,12 @@ we plan to study exceptions under a shared memory interpretation.
 
 \appendix
 \chapter{EPass and example code} 
-\section{Grammar} \label{sec:grammar}
+\section{EPass grammar} \label{sec:grammar}
 \inputminted{text}{code/grammar.txt}
 \newpage
 \section{List zip} \label{sec:exnzip}
 \lstinputlisting{code/listzip.eps}
-
+\newpage
 \section{Set as trie} \label{sec:trie}
 \lstinputlisting{code/trie.eps}
 \backmatter
