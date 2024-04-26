@@ -1679,9 +1679,11 @@ we plan to study exceptions under a shared memory interpretation.
   
   Now assume $\config_L$ is final, we distinguish the cases by the structure of process $P$.
   \begin{itemize}
-    \item [\ruleref{parL}] In this case, $P = \send{c}{a}; P'$. 
+    \item [\textbf{send}] In this case, $P = \send{c}{a}; P'$. 
     If $c$ is an external channel, then all of $\config$ is final.
-    Otherwise, $P$ provides $a$ and ends in $\pare L^*$ rule. The typing derivation of $\Phi \vdash \procObj{\Gamma}{\Delta}{\Omega}{\send{c}{a}; P'} :: \Phi'$ looks like
+    Otherwise, $P$ provides $a$ and ends in either $\ruleref{tensorR}$ or $\ruleref{parL}$. 
+    We assume it ends in $\ruleref{parL}$, the other case is similar.
+    The typing derivation of $\Phi \vdash \procObj{\Gamma}{\Delta}{\Omega}{\send{c}{a}; P'} :: \Phi'$ looks like
     \[
       \infer[\ruleref{config-object}]{\Phi' \vdash \procObj{\Gamma}{\Delta}{\Omega}{\send{c}{a}; P'} :: \Phi}{
         \infer[\ruleref{parL}]{\Gamma', c : A \pare B \vdash \send{c}{a}; P' :: a : A, \Delta'; \Omega}{
@@ -1703,12 +1705,13 @@ we plan to study exceptions under a shared memory interpretation.
     these must be empty. Moreover, since $\config_L$ is final, this process must
     be trying to communicate along $c$, so such process must have form $\recv{c}{(x \Rightarrow Q(x))}$.
     By \stepref{channel-reduction-l}{channel-l}, we know that the configuration can reduce to another configuration without changing the set $\cancelSet$.
-    \item [\ruleref{cut}] In this case, $P = \spawn{P_1}{P_2}{x}$. By reduction, we know 
+    \item [\textbf{spawn}] In this case, $P = \spawn{P_1}{P_2}{x}$. By reduction, we know 
     $\langle \config; \cancelSet \rangle \longrightarrow
     \langle (\config_L, \procObj{\Gamma_1}{a : A, \Delta_1}{\cdot}{P_1(a)}, \procObj{\Gamma_2, a : A}{\Delta_2}{\Omega}{P_2(a)}); \cancelSet \rangle$
     with a proper split of the context ensured by the condition.
-    \item [\ruleref{weakenL}] In this case $P = \cancel{a}; P'$ and $\Gamma = \Gamma', a : A$. 
-    For simplicity, we assume $\config_L$ is final.
+    \item [\textbf{cancel}] In this case $P = \cancel{a}; P'$.
+    We now case on whether $a$ is in the antecedent or succedent. 
+    We assume $\Gamma = \Gamma', a : A$, while the case $\Delta = a : A, \Delta'$ is similar.
     By reduction, we know $\langle \config; \cancelSet \rangle \longrightarrow \langle (\config_L, \procObj{\Gamma'}{\Delta}{\Omega}{P'}); \cancelSet \cup \{a\} \rangle$.
   \end{itemize}
 \end{proof}
