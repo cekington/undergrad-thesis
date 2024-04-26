@@ -849,14 +849,14 @@ According to the static rules, there must be a valid splitting of the context th
     \Braket{
       \begin{array}{l}
         \procObj{\Gamma_1, a : A}{c : A\otimes B, \Delta_1}{\Omega_1}{\send{c}{a}; P} \\
-        \procObj{\Gamma_2, c : A \otimes B}{\Delta_2}{\Omega_2}{\recv{c}{(x \Rightarrow P(x))}}
+        \procObj{\Gamma_2, c : A \otimes B}{\Delta_2}{\Omega_2}{\recv{c}{(x \Rightarrow Q(x))}}
       \end{array}
       ; \cancelSet
     } \tag*{} \\ ~ \longrightarrow & ~ 
     \Braket{
       \begin{array}{l}
         \procObj{\Gamma_1}{c : B, \Delta_1}{\Omega_1}{P} \\
-        \procObj{\Gamma_2, c : B}{\Delta_2}{\Omega_2}{P(a)}
+        \procObj{\Gamma_2, a : A, c : B}{\Delta_2}{\Omega_2}{Q(a)}
       \end{array}
       ; \cancelSet 
     } \tag*{} \\
@@ -864,14 +864,14 @@ According to the static rules, there must be a valid splitting of the context th
       \Braket{
         \begin{array}{l}
           \procObj{\Gamma_1, c : A \pare B}{a : A, \Delta_1}{\Omega_1}{\send{c}{a}; P} \\
-          \procObj{\Gamma_2}{c : A \pare B, \Delta_2}{\Omega_2}{\recv{c}{(x \Rightarrow P(x))}}
+          \procObj{\Gamma_2}{c : A \pare B, \Delta_2}{\Omega_2}{\recv{c}{(x \Rightarrow Q(x))}}
         \end{array}
         ; \cancelSet
       } \tag*{} \\ ~ \longrightarrow & ~ 
       \Braket{
         \begin{array}{l}
-          \procObj{\Gamma_1}{c : B, \Delta_1}{\Omega_1}{P} \\
-          \procObj{\Gamma_2, c : B}{\Delta_2}{\Omega_2}{P(a)}
+          \procObj{\Gamma_1, c : B}{\Delta_1}{\Omega_1}{P} \\
+          \procObj{\Gamma_2}{a : A, c : B, \Delta_2}{\Omega_2}{Q(a)}
         \end{array}
         ; \cancelSet
     } \tag*{} \\
@@ -879,14 +879,14 @@ According to the static rules, there must be a valid splitting of the context th
       \Braket{
         \begin{array}{l}
           \procObj{\Gamma_1}{a : \oplus\{l : A_l\}_{l \in L}, \Delta_1}{\Omega_1}{\send{a}{k}; P} \\
-          \procObj{\Gamma_2, a : \oplus\{l : A_l\}_{l \in L}}{\Delta_2}{\Omega_2}{\recv{a}{(l \Rightarrow P_l)_{l \in L}}}
+          \procObj{\Gamma_2, a : \oplus\{l : A_l\}_{l \in L}}{\Delta_2}{\Omega_2}{\recv{a}{(l \Rightarrow Q_l)_{l \in L}}}
         \end{array}
         ; \cancelSet
       } \tag*{} \\ ~ \longrightarrow & ~ 
       \Braket{
         \begin{array}{l}
           \procObj{\Gamma_1}{a : A_k, \Delta_1}{\Omega_1}{P} \\
-          \procObj{\Gamma_2, a : A_k}{\Delta_2}{\Omega_2}{P_k}
+          \procObj{\Gamma_2, a : A_k}{\Delta_2}{\Omega_2}{Q_k}
         \end{array}
         ; \cancelSet
     } \tag*{} \\
@@ -894,14 +894,14 @@ According to the static rules, there must be a valid splitting of the context th
       \Braket{
         \begin{array}{l}
           \procObj{\Gamma_1, a : \&\{l : A_l\}_{l \in L}}{\Delta_1}{\Omega_1}{\send{a}{k}; P} \\
-          \procObj{\Gamma_2}{a : \&\{l : A_l\}_{l \in L}, \Delta_2}{\Omega_2}{\recv{a}{(l \Rightarrow P_l)_{l \in L}}}
+          \procObj{\Gamma_2}{a : \&\{l : A_l\}_{l \in L}, \Delta_2}{\Omega_2}{\recv{a}{(l \Rightarrow Q_l)_{l \in L}}}
         \end{array}
         ; \cancelSet
       } \tag*{} \\ ~ \longrightarrow & ~ 
       \Braket{
         \begin{array}{l}
           \procObj{\Gamma_1, a : A_k}{\Delta_1}{\Omega_1}{P} \\
-          \procObj{\Gamma_2}{a : A_k, \Delta_2}{\Omega_2}{P_k}
+          \procObj{\Gamma_2}{a : A_k, \Delta_2}{\Omega_2}{Q_k}
         \end{array}
         ; \cancelSet
     } \tag*{} \\
@@ -1110,99 +1110,8 @@ Such property is stated in \cref{thm:preservation}.
   then $\Phi \vdash \config' :: \Phi'$.
 \end{theorem}
 The proof of the theorem is casing over the forms of reduction. 
-We will show a few interesting cases to demonstrate how proof proceeds.
-\begin{proof}
-  We induct on the forms of reduction.
-  \begin{itemize}
-    \item [\stepref{spawn}{spawn}] In this case, $\config = (\config_L, \procObj{\Gamma}{\Delta}{\Omega}{\spawn{P}{Q}{x}}, \config_R)$ for some $\config_L$ and $\config_R$. 
-    Moreover, we assume the following typing judgments hold.
-    \begin{align*}
-      \Phi & \vdash \config_L :: \Phi_L \\
-      \Phi_L & \vdash \procObj{\Gamma}{\Delta}{\Omega}{\spawn{P}{Q}{x}} :: \Phi_R\\
-      \Phi_R & \vdash \config_R :: \Phi'
-    \end{align*}
-    We can split the context $\Gamma$ and $\Delta$ into $\Gamma_1, \Gamma_2$ and $\Delta_1, \Delta_2$ based on the condition given in the reduction rule
-    such that we can reconstruct the typing judgment for the configuration successfully.
-    By the reduction rule, we know
-    \begin{align*}
-      \config' &= \config_L, \procObj{\Gamma_1}{a : A, \Delta}{\cdot}{P(a)}, \procObj{\Gamma_2, a : A}{\Delta_2}{\Omega}{Q(a)}, \config_R \\
-      \cancelSet' &= \cancelSet
-    \end{align*}
-    where $a$ is a globally fresh channel.
-    To build the typing judgment for the new state, we apply inversion to the typing 
-    \[
-      \Phi_L \vdash \procObj{\Gamma}{\Delta}{\Omega}{\spawn{P}{Q}{x}} :: \Phi_R
-    \]
-    We find that for some $\Phi_L'$ and $A$, using the new channel $a$, we must have
-    \begin{align*}
-      \Phi_L &= (\Phi_L', \Gamma_1, \Gamma_2) \\
-      \Gamma_1 & \vdash P(a) :: \Delta_1, a : A; \cdot \\
-      \Gamma_2, a : A & \vdash Q(a) :: \Delta_2; \Omega \\
-      \Phi_R &= (\Phi_L', \Delta_1, \Delta_2, \Omega)
-    \end{align*}
-    Now we can construct a typing derivation for $\config'$
-    \begin{align*}
-      \Phi & \vdash \config_L :: \Phi_L \\
-      \Phi_L &= (\Phi_L', \Gamma_1, \Gamma_2) \\
-      \Phi_L', \Gamma_1, \Gamma_2 & \vdash \procObj{\Gamma_1}{a : A, \Delta}{\cdot}{P(a)} :: (\Phi_L', \Gamma_2, \Delta_1, a : A) \\
-      \Phi_L', \Gamma_2, \Delta_1, a : A & \vdash \procObj{\Gamma_2, a : A}{\Delta_2}{\Omega}{Q(a)} :: (\Phi_L', \Delta_1, \Delta_2, \Omega) \\
-      \Phi_R &= (\Phi_L', \Delta_1, \Delta_2, \Omega) \\
-      \Phi_L & \vdash \config_R :: \Phi'
-    \end{align*}
-    This concludes this case of type preservation.
-  \item [\stepref{cancelL}{cancel-l}] In this case, $\config = (\config_L, \procObj{\Gamma, a : A}{\Delta}{\Omega}{\cancel{a}; P}, \config_R)$.
-    We assume the following typing judgments hold.
-    \begin{align*}
-      \Phi & \vdash \config_L :: \Phi_L \\
-      \Phi_L & \vdash \procObj{\Gamma, a : A}{\Delta}{\Omega}{\cancel{a}; P} :: \Phi_R \\
-      \Phi_R & \vdash \config_R :: \Phi'
-    \end{align*}
-    By the reduction rule, we know
-    \begin{align*}
-      \config' &= \config_L, \procObj{\Gamma}{\Delta}{\Omega}{P}, \config_R \\
-      \cancelSet' &= \cancelSet \cup \{a\}
-    \end{align*}
-    We can apply inversion to the typing judgment
-    \[
-      \Phi_L \vdash \procObj{\Gamma, a : A}{\Delta}{\Omega}{\cancel{a}; P} :: \Phi_R
-    \]
-    to find that for some $\Phi_L'$, we must have
-    \begin{align*}
-      \Phi_L & = (\Phi_L', \Gamma) \\
-      \Gamma & \vdash P :: \Delta; \Omega \\
-      \Phi_R & = (\Phi_L', \Delta, \Omega)
-    \end{align*}
-    Now we can construct a typing derivation for $\config'$
-    \begin{align*}
-      \Phi & \vdash \config_L :: \Phi_L \\
-      \Phi_L & = (\Phi_L', \Gamma) \\
-      \Phi_L', \Gamma & \vdash \procObj{\Gamma}{\Delta}{\Omega}{P} :: (\Phi_L', \Delta, \Omega) \\
-      \Phi_R & = (\Phi_L', \Delta, \Omega) \\
-      \Phi_R & \vdash \config_R :: \Phi'
-    \end{align*}
-    This concludes this case of type preservation.
-  \end{itemize}
-\item [\stepref{silence}{silent}] In this case, $\config = (\config_L, \procObj{\cdot}{\cdot}{a : \text{exn}}{\cdot}, \config_R)$.
-  We assume the following typing judgments hold.
-  \begin{align*}
-    \Phi & \vdash \config_L :: \Phi_L \\
-    \Phi_L & \vdash \procObj{\cdot}{\cdot}{a : \text{exn}}{\cdot} :: \Phi_R \\
-    \Phi_R & \vdash \config_R :: \Phi'
-  \end{align*}
-  Applying the inversion, we must have $\Phi_R = \Phi_L, a : \text{exn}$. By the reduction rule, we know
-  \begin{align*}
-    \config' &= \config_L, \procObj{\cdot}{a : \text{exn}}{\cdot}{\send{a}{\text{sil}}; \send{a}{()}}, \config_R \\
-    \cancelSet' &= \cancelSet
-  \end{align*}
-  We can construct a typing derivation for $\config'$ as
-  \begin{align*}
-    \Phi & \vdash \config_L :: \Phi_L \\
-    \Phi_L & \vdash \procObj{\cdot}{a : \text{exn}}{\cdot}{\send{a}{\text{sil}}; \send{a}{()}} :: \Phi_L, a : \text{exn} \\
-    \Phi_R & = \Phi_L, a : \text{exn} \\
-    \Phi_R & \vdash \config_R :: \Phi'
-  \end{align*}
-  This concludes this case of type preservation.
-\end{proof}
+We show a few cases to demonstrate how proof proceeds in \cref{sec::fidelityproof}.
+
 Showing every reduction sequence terminates is not possible in our system because of recursion. 
 For instance, a process \texttt{foo} can call itself such that the execution will never terminate.
 However, we are able to show that well-typed configurations never get stuck.
@@ -1216,34 +1125,7 @@ We require the configuration does not take any input channels.
 Otherwise, the configuration may get stuck because the messages from the input channel may not be available.
 The collection of external channels is represented by $\Phi$. Such channels have only one endpoint.
 In other words, if $\config$ satisfies $\cdot \vdash \config :: \Phi$, then $\config$ is a closed configuration because it does not depend on any channels.
-\begin{proof}
-  We prove this theorem by induction on the structure of the configuration, right to left.
-  Since the typing of the configuration requires some ordering, a right to left induction provides useful induction hypothesis.
-  If $\config = \cdot$, then $\config$ is trivially final and the theorem holds.
-  Now we assume the followings: 
-  \begin{align*}
-    \config &= (\config_L, \procObj{\Gamma}{\Delta}{\Omega}{P}) \\
-    \cdot & \vdash \config_L :: (\Phi', \Gamma) \\
-    \Phi', \Gamma & \vdash \procObj{\Gamma}{\Delta}{\Omega}{P} :: (\Phi', \Delta) \\
-    \Phi & = (\Phi, \Delta) \\
-    \cdot & \vdash \config :: \Phi
-  \end{align*}
-  for a process object $\procObj{\Gamma}{\Delta}{\Omega}{P}$ and $\Phi, \Phi'$. By induction hypothesis,
-  we know that $\config_L$ is either final or can reduce to another configuration $\config_L'$ with some cancelled set $\cancelSet'$.
-  If it reduces to $\langle \config_L'; \cancelSet' \rangle$, then $\langle \config; \cancelSet \rangle \longrightarrow 
-  \langle (\config_L', \procObj{\Gamma}{\Delta}{\Omega}{P}); \cancelSet' \rangle$.
-  
-  Now assume $\config_L$ is final, we distinguish the cases by the structure of process $P$.
-  \begin{itemize}
-    \item [\ruleref{cut}] In this case, $P = \spawn{P_1}{P_2}{x}$. By reduction, we know 
-    $\langle \config; \cancelSet \rangle \longrightarrow
-    \langle (\config_L, \procObj{\Gamma_1}{a : A, \Delta_1}{\cdot}{P_1(a)}, \procObj{\Gamma_2, a : A}{\Delta_2}{\Omega}{P_2(a)}); \cancelSet \rangle$
-    with a proper split of the context ensured by the condition.
-    \item [\ruleref{weakenL}] In this case $P = \cancel{a}; P'$ and $\Gamma = \Gamma', a : A$. 
-    For simplicity, we assume $\config_L$ is final.
-    By reduction, we know $\langle \config; \cancelSet \rangle \longrightarrow \langle (\config_L, \procObj{\Gamma'}{\Delta}{\Omega}{P'}); \cancelSet \cup \{a\} \rangle$.
-  \end{itemize}
-\end{proof}
+We sketch the proof with a few cases in \cref{sec::deadlockproof}.
 \chapter{Interpreter}
 Experimenting with the proposed type system, we implement a simple interpreter in OCaml. 
 We name the source language EPass, an abbreviation for Exceptional Message Passing. 
@@ -1609,6 +1491,227 @@ writing to a freed memory cell or dereferencing an invalid address. In future wo
 we plan to study exceptions under a shared memory interpretation.
 
 \appendix
+\chapter{Proofs}
+\section{Session fidelity proof}\label{sec::fidelityproof}
+\begin{proof}
+  We induct on the forms of reduction.
+  \begin{itemize}
+    \item [\stepref{channel-reduction-r}{channel-r}] In this case, $\config = (\config_L, \procObj{\Gamma_1, a : A}{c : A \otimes B, \Delta_1}{\Omega_1}{\send{c}{a}; P},$
+   
+    $\procObj{\Gamma_2, c : A \otimes b}{\Delta_2}{\Omega_2}{\recv{c}{(x \Rightarrow Q(x))}}, \config_R)$.
+    
+    Here we have taken advantage to restrict ourselves to the case
+    where the two process objects are immediately adjacent in the typing derivation.
+    If they are not, we can always exchange the order of the configuration to make them adjacent.
+
+    We assume the following typing judgments hold.
+    \begin{align*}
+      \Phi & \vdash \config_L :: \Phi_L \\
+      \Phi_L & \vdash \procObj{\Gamma_1, a : A}{c : A \otimes B, \Delta_1}{\Omega_1}{\send{c}{a}; P}, \\
+      & \quad \procObj{\Gamma_2, c : A \otimes B}{\Delta_2}{\Omega_2}{\recv{c}{(x \Rightarrow Q(x))}} :: \Phi_R \\
+      \Phi_R & \vdash \config_R :: \Phi'
+    \end{align*}
+    By the reduction rule, we know
+    \begin{align*}
+      \config' &= \config_L, \procObj{\Gamma_1}{c : B, \Delta_1}{\Omega_1}{P}, \procObj{\Gamma_2, a : A, c : B}{\Delta_2}{\Omega_2}{Q(a)}, \config_R \\
+      \cancelSet' &= \cancelSet
+    \end{align*}
+    We can apply inversion to the typing judgment
+    \begin{align*}
+      \Phi_L & \vdash \procObj{\Gamma_1, a : A}{c : A \otimes B, \Delta_1}{\Omega_1}{\send{c}{a}; P}, \\
+      & \quad \procObj{\Gamma_2, c : A \otimes B}{\Delta_2}{\Omega_2}{\recv{c}{(x \Rightarrow Q(x))}} :: \Phi_R
+    \end{align*}
+    to find that for some $\Phi_L'$, we must have
+    \begin{align*}
+      \Phi_L & = (\Phi_L', a : A, \Gamma_1, \Gamma_2) \\
+      \Gamma_1 & \vdash P :: c : B, \Delta_1; \Omega_1 \\
+      \Gamma_2, a : A, c : B & \vdash Q(a) :: \Delta_2; \Omega_2 \\
+      \Phi_R & = (\Phi_L', \Delta_1, \Delta_2, \Omega_1, \Omega_2)
+    \end{align*}
+    Now we can construct a typing derivation for $\config'$
+    \begin{align*}
+      \Phi & \vdash \config_L :: \Phi_L \\
+      \Phi_L & = (\Phi_L', a : A, \Gamma_1, \Gamma_2) \\
+      \Phi_L', a : A, \Gamma_1, \Gamma_2 & \vdash \procObj{\Gamma_1}{c : B, \Delta_1}{\Omega_1}{P} :: (\Phi_L', a : A, c : B, \Delta_1, \Omega_1) \\
+      \Phi_L', a : A, c : B, \Delta_1, \Omega_1 & \vdash \procObj{\Gamma_2, a : A, c : B}{\Delta_2}{\Omega_2}{Q(a)} :: (\Phi_L', \Delta_1, \Delta_2, \Omega_1, \Omega_2) \\
+      \Phi_R & = (\Phi_L', \Delta_1, \Delta_2, \Omega_1, \Omega_2) \\
+      \Phi_L & \vdash \config_R :: \Phi'
+    \end{align*}
+    This concludes this case of type preservation.
+    \item [\stepref{spawn}{spawn}] In this case, $\config = (\config_L, \procObj{\Gamma}{\Delta}{\Omega}{\spawn{P}{Q}{x}}, \config_R)$ for some $\config_L$ and $\config_R$. 
+    Moreover, we assume the following typing judgments hold.
+    \begin{align*}
+      \Phi & \vdash \config_L :: \Phi_L \\
+      \Phi_L & \vdash \procObj{\Gamma}{\Delta}{\Omega}{\spawn{P}{Q}{x}} :: \Phi_R\\
+      \Phi_R & \vdash \config_R :: \Phi'
+    \end{align*}
+    We can split the context $\Gamma$ and $\Delta$ into $\Gamma_1, \Gamma_2$ and $\Delta_1, \Delta_2$ based on the condition given in the reduction rule
+    such that we can reconstruct the typing judgment for the configuration successfully.
+    By the reduction rule, we know
+    \begin{align*}
+      \config' &= \config_L, \procObj{\Gamma_1}{a : A, \Delta}{\cdot}{P(a)}, \procObj{\Gamma_2, a : A}{\Delta_2}{\Omega}{Q(a)}, \config_R \\
+      \cancelSet' &= \cancelSet
+    \end{align*}
+    where $a$ is a globally fresh channel.
+    To build the typing judgment for the new state, we apply inversion to the typing 
+    \[
+      \Phi_L \vdash \procObj{\Gamma}{\Delta}{\Omega}{\spawn{P}{Q}{x}} :: \Phi_R
+    \]
+    We find that for some $\Phi_L'$ and $A$, using the new channel $a$, we must have
+    \begin{align*}
+      \Phi_L &= (\Phi_L', \Gamma_1, \Gamma_2) \\
+      \Gamma_1 & \vdash P(a) :: \Delta_1, a : A; \cdot \\
+      \Gamma_2, a : A & \vdash Q(a) :: \Delta_2; \Omega \\
+      \Phi_R &= (\Phi_L', \Delta_1, \Delta_2, \Omega)
+    \end{align*}
+    Now we can construct a typing derivation for $\config'$
+    \begin{align*}
+      \Phi & \vdash \config_L :: \Phi_L \\
+      \Phi_L &= (\Phi_L', \Gamma_1, \Gamma_2) \\
+      \Phi_L', \Gamma_1, \Gamma_2 & \vdash \procObj{\Gamma_1}{a : A, \Delta}{\cdot}{P(a)} :: (\Phi_L', \Gamma_2, \Delta_1, a : A) \\
+      \Phi_L', \Gamma_2, \Delta_1, a : A & \vdash \procObj{\Gamma_2, a : A}{\Delta_2}{\Omega}{Q(a)} :: (\Phi_L', \Delta_1, \Delta_2, \Omega) \\
+      \Phi_R &= (\Phi_L', \Delta_1, \Delta_2, \Omega) \\
+      \Phi_L & \vdash \config_R :: \Phi'
+    \end{align*}
+    This concludes this case of type preservation.
+  \item [\stepref{cancelL}{cancel-l}] In this case, $\config = (\config_L, \procObj{\Gamma, a : A}{\Delta}{\Omega}{\cancel{a}; P}, \config_R)$.
+    We assume the following typing judgments hold.
+    \begin{align*}
+      \Phi & \vdash \config_L :: \Phi_L \\
+      \Phi_L & \vdash \procObj{\Gamma, a : A}{\Delta}{\Omega}{\cancel{a}; P} :: \Phi_R \\
+      \Phi_R & \vdash \config_R :: \Phi'
+    \end{align*}
+    By the reduction rule, we know
+    \begin{align*}
+      \config' &= \config_L, \procObj{\Gamma}{\Delta}{\Omega}{P}, \config_R \\
+      \cancelSet' &= \cancelSet \cup \{a\}
+    \end{align*}
+    We can apply inversion to the typing judgment
+    \[
+      \Phi_L \vdash \procObj{\Gamma, a : A}{\Delta}{\Omega}{\cancel{a}; P} :: \Phi_R
+    \]
+    to find that for some $\Phi_L'$, we must have
+    \begin{align*}
+      \Phi_L & = (\Phi_L', \Gamma) \\
+      \Gamma & \vdash P :: \Delta; \Omega \\
+      \Phi_R & = (\Phi_L', \Delta, \Omega)
+    \end{align*}
+    Now we can construct a typing derivation for $\config'$
+    \begin{align*}
+      \Phi & \vdash \config_L :: \Phi_L \\
+      \Phi_L & = (\Phi_L', \Gamma) \\
+      \Phi_L', \Gamma & \vdash \procObj{\Gamma}{\Delta}{\Omega}{P} :: (\Phi_L', \Delta, \Omega) \\
+      \Phi_R & = (\Phi_L', \Delta, \Omega) \\
+      \Phi_R & \vdash \config_R :: \Phi'
+    \end{align*}
+    This concludes this case of type preservation.
+  \end{itemize}
+\item [\stepref{silence}{silent}] In this case, $\config = (\config_L, \procObj{\cdot}{\cdot}{a : \text{exn}}{\cdot}, \config_R)$.
+  We assume the following typing judgments hold.
+  \begin{align*}
+    \Phi & \vdash \config_L :: \Phi_L \\
+    \Phi_L & \vdash \procObj{\cdot}{\cdot}{a : \text{exn}}{\cdot} :: \Phi_R \\
+    \Phi_R & \vdash \config_R :: \Phi'
+  \end{align*}
+  Applying the inversion, we must have $\Phi_R = \Phi_L, a : \text{exn}$. By the reduction rule, we know
+  \begin{align*}
+    \config' &= \config_L, \procObj{\cdot}{a : \text{exn}}{\cdot}{\send{a}{\text{sil}}; \send{a}{()}}, \config_R \\
+    \cancelSet' &= \cancelSet
+  \end{align*}
+  We can construct a typing derivation for $\config'$ as
+  \begin{align*}
+    \Phi & \vdash \config_L :: \Phi_L \\
+    \Phi_L & \vdash \procObj{\cdot}{a : \text{exn}}{\cdot}{\send{a}{\text{sil}}; \send{a}{()}} :: \Phi_L, a : \text{exn} \\
+    \Phi_R & = \Phi_L, a : \text{exn} \\
+    \Phi_R & \vdash \config_R :: \Phi'
+  \end{align*}
+  This concludes this case of type preservation.
+  \item [\stepref{cancel-prop-l}{cancel-prop-l}] In this case, $\config = (\config_L, \procObj{\Gamma, a : A}{\Delta}{\Omega}{P(a)}, \config_R)$,
+    prefix($P$) = $a$, and $a \in \cancelSet$.
+    We assume the following typing judgments hold.
+    \begin{align*}
+      \Phi & \vdash \config_L :: \Phi_L \\
+      \Phi_L & \vdash \procObj{\Gamma, a : A}{\Delta}{\Omega}{P(a)} :: \Phi_R \\
+      \Phi_R & \vdash \config_R :: \Phi'
+    \end{align*}
+    By the reduction rule, we know
+    \begin{align*}
+      \config' &= \config_L, \procObj{\Gamma}{\Delta}{\Omega}{\cancel{\Gamma};\cancel{\Delta}}, \config_R \\
+      \cancelSet' &= \cancelSet
+    \end{align*}
+    We can apply inversion to the typing judgment
+    \[
+      \Phi_L \vdash \procObj{\Gamma}{\Delta}{\Omega}{\cancel{\Gamma};\cancel{\Delta}} :: \Phi_R
+    \]
+    to find that for some $\Phi_L'$, we must have
+    \begin{align*}
+      \Phi_L & = (\Phi_L', \Gamma) \\
+      \Gamma & \vdash \cancel{\Gamma};\cancel{\Delta} :: \Delta; \Omega \\
+      \Phi_R & = (\Phi_L', \Delta, \Omega)
+    \end{align*}
+    Now we can construct a typing derivation for $\config'$
+    \begin{align*}
+      \Phi & \vdash \config_L :: \Phi_L \\
+      \Phi_L & = (\Phi_L', \Gamma) \\
+      \Phi_L', \Gamma & \vdash \procObj{\Gamma}{\Delta}{\Omega}{\cancel{\Gamma};\cancel{\Delta}} :: (\Phi_L', \Delta, \Omega) \\
+      \Phi_R & = (\Phi_L', \Delta, \Omega) \\
+      \Phi_R & \vdash \config_R :: \Phi'
+    \end{align*}
+    This concludes this case of type preservation.
+  
+\end{proof}
+\section{Deadlock freedom proof}\label{sec::deadlockproof}
+\begin{proof}
+  We prove this theorem by induction on the structure of the configuration, right to left.
+  Since the typing of the configuration requires some ordering, a right to left induction provides useful induction hypothesis.
+  If $\config = \cdot$, then $\config$ is trivially final and the theorem holds.
+  Now we assume the followings: 
+  \begin{align*}
+    \config &= (\config_L, \procObj{\Gamma}{\Delta}{\Omega}{P}) \\
+    \cdot & \vdash \config_L :: \Phi' \\
+    \Phi' & \vdash \procObj{\Gamma}{\Delta}{\Omega}{P} :: \Phi \\
+    \cdot & \vdash \config :: \Phi
+  \end{align*}
+  for a process object $\procObj{\Gamma}{\Delta}{\Omega}{P}$ and $\Phi'$. By induction hypothesis,
+  we know that $\config_L$ is either final or can reduce to another configuration $\config_L'$.
+  If it reduces to $\langle \config_L'; \cancelSet' \rangle$, then $\langle \config; \cancelSet \rangle \longrightarrow 
+  \langle (\config_L', \procObj{\Gamma}{\Delta}{\Omega}{P}); \cancelSet' \rangle$.
+  
+  Now assume $\config_L$ is final, we distinguish the cases by the structure of process $P$.
+  \begin{itemize}
+    \item [\ruleref{parL}] In this case, $P = \send{c}{a}; P'$. 
+    If $c$ is an external channel, then all of $\config$ is final.
+    Otherwise, $P$ provides $a$ and ends in $\pare L^*$ rule. The typing derivation of $\Phi \vdash \procObj{\Gamma}{\Delta}{\Omega}{\send{c}{a}; P'} :: \Phi'$ looks like
+    \[
+      \infer[\ruleref{config-object}]{\Phi' \vdash \procObj{\Gamma}{\Delta}{\Omega}{\send{c}{a}; P'} :: \Phi}{
+        \infer[\ruleref{parL}]{\Gamma', c : A \pare B \vdash \send{c}{a}; P' :: a : A, \Delta'; \Omega}{
+          \Gamma', c : B \vdash P' :: \Delta; \Omega
+        }
+      }
+    \] 
+    where 
+    \begin{align*}
+      \Gamma & = \Gamma', c : A \pare B \\
+      \Delta & = a : A, \Delta' \\
+      \Phi & = (\Phi_P, a : A, \Delta', \Omega) \\
+      \Phi' & = (\Phi_P, \Gamma', c : A \pare B)
+    \end{align*}
+    for some $\Phi_P$.
+
+    Because $\cdot \vdash \config_L :: \Phi_P, \Gamma', c : A \pare B$, there must be a process object in $\config_L$ providing
+    $c : A \pare B$. In particular, it cannot be part of the antecedents of $\config_L$ because
+    these must be empty. Moreover, since $\config_L$ is final, this process must
+    be trying to communicate along $c$, so such process must have form $\recv{c}{(x \Rightarrow Q(x))}$.
+    By \stepref{channel-reduction-l}{channel-l}, we know that the configuration can reduce to another configuration without changing the set $\cancelSet$.
+    \item [\ruleref{cut}] In this case, $P = \spawn{P_1}{P_2}{x}$. By reduction, we know 
+    $\langle \config; \cancelSet \rangle \longrightarrow
+    \langle (\config_L, \procObj{\Gamma_1}{a : A, \Delta_1}{\cdot}{P_1(a)}, \procObj{\Gamma_2, a : A}{\Delta_2}{\Omega}{P_2(a)}); \cancelSet \rangle$
+    with a proper split of the context ensured by the condition.
+    \item [\ruleref{weakenL}] In this case $P = \cancel{a}; P'$ and $\Gamma = \Gamma', a : A$. 
+    For simplicity, we assume $\config_L$ is final.
+    By reduction, we know $\langle \config; \cancelSet \rangle \longrightarrow \langle (\config_L, \procObj{\Gamma'}{\Delta}{\Omega}{P'}); \cancelSet \cup \{a\} \rangle$.
+  \end{itemize}
+\end{proof}
 \chapter{EPass and example code} 
 \section{EPass grammar} \label{sec:grammar}
 \inputminted{text}{code/grammar.txt}
